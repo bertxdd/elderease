@@ -17,6 +17,7 @@ class AuthApiService {
     required String email,
     required String password,
     required String phoneNumber,
+    String birthday = '',
     String address = '',
   }) async {
     try {
@@ -29,6 +30,7 @@ class AuthApiService {
           'email': email,
           'password': password,
           'phone_number': phoneNumber,
+          'birthday': birthday,
           'address': address,
         }),
       );

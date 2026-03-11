@@ -13,6 +13,8 @@ This folder contains a ready-to-upload backend matching your Flutter app flow.
 - `api/list_requests.php`: lists requests and statuses for a username
 - `api/register.php`: creates user account
 - `api/login.php`: authenticates user account
+- `api/get_profile.php`: fetches profile details by username
+- `api/update_profile.php`: updates profile details by username
 - `api/assign_volunteer.php`: assigns helper to request and sets status to matched
 - `api/update_request_status.php`: updates request status (for admin/volunteer tools)
 - `api/list_services.php`: fetches active services catalog
@@ -70,6 +72,7 @@ Current Flutter config already uses this in `lib/config/app_config.dart`.
   "email": "mg@gmail.com",
   "password": "secret123",
   "phone_number": "09086149697",
+  "birthday": "1999-05-12",
   "address": "Bacolod City"
 }
 ```
@@ -82,6 +85,25 @@ Current Flutter config already uses this in `lib/config/app_config.dart`.
 {
   "username": "margrethe",
   "password": "secret123"
+}
+```
+
+### Get profile
+
+`GET https://elderease.uslsbsit.com/api/get_profile.php?username=margrethe`
+
+### Update profile
+
+`POST https://elderease.uslsbsit.com/api/update_profile.php`
+
+```json
+{
+  "username": "margrethe",
+  "full_name": "Margrethe V. Gilpo",
+  "email": "mg@gmail.com",
+  "phone_number": "09086149697",
+  "birthday": "1999-05-12",
+  "address": "123 Main St, Bacolod, 6100"
 }
 ```
 

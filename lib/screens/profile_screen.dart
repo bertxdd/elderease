@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../models/service_model.dart';
+import '../models/user_profile_model.dart';
+import '../services/profile_api_service.dart';
 import '../widgets/bottom_nav.dart';
 import 'home_screen.dart';
 import 'notification_screen.dart';
@@ -19,15 +22,222 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _fullNameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _dobController = TextEditingController();
   final _streetController = TextEditingController();
   final _cityController = TextEditingController();
   final _zipController = TextEditingController();
+  final _service = const ProfileApiService();
+
+  bool _isLoading = true;
+  bool _isSaving = false;
+  String _headerName = '';
+  String _headerEmail = '';
+  DateTime? _memberSince;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _dobController.dispose();
+    _streetController.dispose();
+    _cityController.dispose();
+    _zipController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final profile = await _service.fetchProfile(widget.username);
+      _applyProfile(profile);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to load profile data.'),
+          backgroundColor: Color(0xFFE8922A),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _applyProfile(UserProfileModel profile) {
+    _fullNameController.text = profile.fullName;
+    _emailController.text = profile.email;
+    _phoneController.text = profile.phoneNumber;
+    _dobController.text = profile.birthday;
+
+    final parts = _splitAddress(profile.address);
+    _streetController.text = parts.$1;
+    _cityController.text = parts.$2;
+    _zipController.text = parts.$3;
+
+    setState(() {
+      _headerName = profile.fullName.isNotEmpty ? profile.fullName : profile.username;
+      _headerEmail = profile.email;
+      _memberSince = profile.createdAt;
+    });
+  }
+
+  (String, String, String) _splitAddress(String raw) {
+    final chunks = raw
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    if (chunks.isEmpty) {
+      return ('', '', '');
+    }
+
+    if (chunks.length == 1) {
+      return (chunks[0], '', '');
+    }
+
+    if (chunks.length == 2) {
+      return (chunks[0], chunks[1], '');
+    }
+
+    return (
+      chunks.sublist(0, chunks.length - 2).join(', '),
+      chunks[chunks.length - 2],
+      chunks.last,
+    );
+  }
+
+  Future<void> _pickBirthday() async {
+    final now = DateTime.now();
+    DateTime initialDate = DateTime(now.year - 60, now.month, now.day);
+
+    final parsed = DateTime.tryParse(_dobController.text.trim());
+    if (parsed != null) {
+      initialDate = parsed;
+    }
+
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: DateTime(1900),
+      lastDate: now,
+      initialDate: initialDate,
+    );
+
+    if (picked != null) {
+      _dobController.text =
+          '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    if (_fullNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Full name is required.'),
+          backgroundColor: Color(0xFFE8922A),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    final address = [
+      _streetController.text.trim(),
+      _cityController.text.trim(),
+      _zipController.text.trim(),
+    ].where((e) => e.isNotEmpty).join(', ');
+
+    final profile = UserProfileModel(
+      username: widget.username,
+      fullName: _fullNameController.text.trim(),
+      email: _emailController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
+      birthday: _dobController.text.trim(),
+      address: address,
+      createdAt: _memberSince,
+    );
+
+    final error = await _service.updateProfile(profile);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _isSaving = false);
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: const Color(0xFFE8922A),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _headerName = _fullNameController.text.trim();
+      _headerEmail = _emailController.text.trim();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Profile updated successfully.'),
+        backgroundColor: Color(0xFFE8922A),
+      ),
+    );
+  }
+
+  String _memberSinceLabel() {
+    if (_memberSince == null) {
+      return 'Member since -';
+    }
+
+    final monthNames = const [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    final dt = _memberSince!;
+    return 'Member since ${monthNames[dt.month - 1]} ${dt.year}';
+  }
+
   // Reusable orange-outlined text field
-  Widget _buildField(String label, TextEditingController controller) {
+  Widget _buildField(
+    String label,
+    TextEditingController controller, {
+    bool readOnly = false,
+    VoidCallback? onTap,
+  }) {
     return TextField(
       controller: controller,
+      readOnly: readOnly,
+      onTap: onTap,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.grey),
@@ -71,7 +281,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: _isLoading
+            ? const Padding(
+                padding: EdgeInsets.only(top: 80),
+                child: Center(
+                  child: CircularProgressIndicator(color: Color(0xFFE8922A)),
+                ),
+              )
+            : Column(
           children: [
             // Profile header card
             Container(
@@ -85,21 +302,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   CircleAvatar(radius: 35, backgroundColor: Colors.grey[300]),
                   const SizedBox(width: 16),
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Margrethe',
+                        _headerName.isNotEmpty ? _headerName : widget.username,
                         style: TextStyle(
                           color: Color(0xFFE8922A),
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                         ),
                       ),
-                      Text('mg@gmail.com', style: TextStyle(fontSize: 14)),
                       Text(
-                        'Member since January 2024',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        _headerEmail.isNotEmpty ? _headerEmail : '-',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      Text(
+                        _memberSinceLabel(),
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -128,9 +348,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   _buildField('Full Name', _fullNameController),
                   const SizedBox(height: 12),
+                  _buildField('Email', _emailController),
+                  const SizedBox(height: 12),
                   _buildField('Phone Number', _phoneController),
                   const SizedBox(height: 12),
-                  _buildField('Date of Birth', _dobController),
+                  _buildField(
+                    'Date of Birth',
+                    _dobController,
+                    readOnly: true,
+                    onTap: _pickBirthday,
+                  ),
                 ],
               ),
             ),
@@ -171,21 +398,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Profile saved!'),
-                      backgroundColor: Color(0xFFE8922A),
-                    ),
-                  );
-                },
+                onPressed: _isSaving ? null : _saveProfile,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE8922A),
                 ),
-                child: const Text(
-                  'Save Changes',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Save Changes',
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                      ),
               ),
             ),
           ],
