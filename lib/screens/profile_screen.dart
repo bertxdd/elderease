@@ -1,10 +1,16 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../config/maps_config.dart';
 import '../models/service_model.dart';
 import '../models/user_profile_model.dart';
 import '../services/profile_api_service.dart';
 import '../widgets/bottom_nav.dart';
 import 'home_screen.dart';
+import 'login_screen.dart';
 import 'notification_screen.dart';
 import 'your_service_screen.dart';
 
@@ -190,6 +196,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
+    // Convert the saved address to coordinates and cache it for volunteer map use.
+    await _geocodeAndStoreHomeLocation(address);
+
     setState(() {
       _headerName = _fullNameController.text.trim();
       _headerEmail = _emailController.text.trim();
@@ -200,6 +209,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
         content: Text('Profile updated successfully.'),
         backgroundColor: Color(0xFFE8922A),
       ),
+    );
+  }
+
+  Future<void> _geocodeAndStoreHomeLocation(String address) async {
+    if (address.trim().isEmpty) {
+      return;
+    }
+
+    try {
+      final uri = Uri.parse(
+        'https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeQueryComponent(address)}&key=$googleMapsApiKey',
+      );
+
+      final response = await http.get(uri);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        return;
+      }
+
+      final results = decoded['results'];
+      if (results is! List || results.isEmpty) {
+        return;
+      }
+
+      final first = results.first;
+      if (first is! Map<String, dynamic>) {
+        return;
+      }
+
+      final geometry = first['geometry'];
+      if (geometry is! Map<String, dynamic>) {
+        return;
+      }
+
+      final location = geometry['location'];
+      if (location is! Map<String, dynamic>) {
+        return;
+      }
+
+      final lat = (location['lat'] as num?)?.toDouble();
+      final lng = (location['lng'] as num?)?.toDouble();
+
+      if (lat == null || lng == null) {
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('home_lat', lat);
+      await prefs.setDouble('home_lng', lng);
+      await prefs.setString('home_address', address);
+    } catch (_) {
+      // Keep save flow friendly even if geocoding fails.
+    }
+  }
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Log Out'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text(
+                'Log Out',
+                style: TextStyle(color: Color(0xFFB00020)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
     );
   }
 
@@ -415,6 +515,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         'Save Changes',
                         style: TextStyle(color: Colors.white, fontSize: 18),
                       ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: _logout,
+                icon: const Icon(Icons.logout, color: Color(0xFFB00020)),
+                label: const Text(
+                  'Log Out',
+                  style: TextStyle(
+                    color: Color(0xFFB00020),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFB00020)),
+                ),
               ),
             ),
           ],

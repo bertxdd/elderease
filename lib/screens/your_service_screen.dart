@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/service_model.dart';
+import '../models/service_request_model.dart';
+import '../services/request_repository.dart';
 import '../widgets/bottom_nav.dart';
 import 'home_screen.dart';
 import 'notification_screen.dart';
 import 'profile_screen.dart';
 import 'request_checkout_screen.dart';
+import 'volunteer_screen.dart';
 
 class YourServiceScreen extends StatefulWidget {
   final String username;
@@ -19,6 +22,74 @@ class YourServiceScreen extends StatefulWidget {
 }
 
 class _YourServiceScreenState extends State<YourServiceScreen> {
+  final _repository = const RequestRepository();
+  List<ServiceRequestModel> _requests = [];
+  bool _isLoadingRequests = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRequests();
+  }
+
+  Future<void> _loadRequests() async {
+    setState(() => _isLoadingRequests = true);
+    final requests = await _repository.getRequestsForUser(widget.username);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _requests = requests;
+      _isLoadingRequests = false;
+    });
+  }
+
+  RequestStatus? _latestStatusForService(ServiceModel service) {
+    for (final request in _requests) {
+      final containsService = request.services.any((s) => s.id == service.id);
+      if (containsService) {
+        return request.status;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _trackService(ServiceModel service) async {
+    final status = _latestStatusForService(service);
+
+    if (status == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please confirm this service request first.'),
+          backgroundColor: Color(0xFFE8922A),
+        ),
+      );
+      return;
+    }
+
+    if (status == RequestStatus.completed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This service is already finished.'),
+          backgroundColor: Color(0xFFE8922A),
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VolunteerScreen(
+          username: widget.username,
+          services: [service],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -76,6 +147,10 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
                       itemCount: widget.services.length,
                       itemBuilder: (context, index) {
                         final service = widget.services[index];
+                        final status = _latestStatusForService(service);
+                        final isCompleted = status == RequestStatus.completed;
+                        final statusLabel = status?.name ?? 'not_requested';
+
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
@@ -83,6 +158,7 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: ListTile(
+                            onTap: () => _trackService(service),
                             leading: Container(
                               width: 60,
                               height: 60,
@@ -95,20 +171,48 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            trailing: IconButton(
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                color: Colors.grey,
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                isCompleted
+                                    ? 'Status: Completed (tracking disabled)'
+                                    : status == null
+                                        ? 'Status: Not requested yet'
+                                        : 'Status: $statusLabel (tap to track)',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isCompleted ? Colors.redAccent : Colors.grey,
+                                ),
                               ),
-                              onPressed: () {
-                                setState(() => widget.services.remove(service));
-                              },
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.place,
+                                  color: isCompleted ? Colors.grey : const Color(0xFFE8922A),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.grey,
+                                  ),
+                                  onPressed: () {
+                                    setState(() => widget.services.remove(service));
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                         );
                       },
                     ),
             ),
+            if (_isLoadingRequests)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: LinearProgressIndicator(color: Color(0xFFE8922A)),
+              ),
             // Confirm button
             SizedBox(
               width: double.infinity,
