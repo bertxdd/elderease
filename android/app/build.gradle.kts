@@ -15,11 +15,6 @@ if (localPropertiesFile.exists()) {
     }
 }
 
-val googleMapsApiKey =
-    localProperties.getProperty("GOOGLE_MAPS_API_KEY")
-        ?: System.getenv("GOOGLE_MAPS_API_KEY")
-        ?: ""
-
 android {
     namespace = "com.example.elderease"
     compileSdk = flutter.compileSdkVersion
@@ -43,7 +38,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
     buildTypes {

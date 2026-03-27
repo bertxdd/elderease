@@ -8,4 +8,8 @@ class AppConfig {
   static const String updateProfilePath = 'update_profile.php';
   static const String createRequestPath = 'create_request.php';
   static const String listRequestsPath = 'list_requests.php';
+  static const String listVolunteerRequestsPath = 'list_volunteer_requests.php';
+  static const String acceptRequestPath = 'accept_request.php';
+  static const String updateRequestStatusPath = 'update_request_status.php';
+  static const String updateVolunteerLocationPath = 'update_volunteer_location.php';
 }

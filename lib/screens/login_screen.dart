@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../models/service_model.dart';
 import '../services/auth_api_service.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
+import 'volunteer_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,17 +14,44 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const _rolePrefKey = 'login_selected_role';
+
   // Controllers read what the user types
-  final _usernameController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = const AuthApiService();
+  String _selectedRole = 'User';
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedRole();
+  }
+
+  Future<void> _loadSavedRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedRole = prefs.getString(_rolePrefKey);
+    if (!mounted || savedRole == null) {
+      return;
+    }
+
+    if (savedRole == 'User' || savedRole == 'Volunteer') {
+      setState(() => _selectedRole = savedRole);
+    }
+  }
+
+  Future<void> _updateSelectedRole(String role) async {
+    setState(() => _selectedRole = role);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_rolePrefKey, role);
+  }
+
   Future<void> _login() async {
-    String username = _usernameController.text.trim();
+    String identifier = _identifierController.text.trim();
     String password = _passwordController.text.trim();
     // Basic validation - check fields are not empty
-    if (username.isEmpty || password.isEmpty) {
+    if (identifier.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
       );
@@ -29,9 +60,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    final (success, message) = await _authService.login(
-      username: username,
+    final (success, accountUsername, confirmedRole) = await _authService.login(
+      identifier: identifier,
       password: password,
+      role: _selectedRole.toLowerCase(),
     );
 
     if (!mounted) {
@@ -41,16 +73,29 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(accountUsername)));
+      return;
+    }
+
+    if (confirmedRole == 'volunteer') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VolunteerHomeScreen(
+            username: accountUsername,
+            services: const <ServiceModel>[],
+          ),
+        ),
       );
       return;
     }
 
-    // Navigate to Home Screen on success
+    // Default to user home UI.
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => HomeScreen(username: username)),
+      MaterialPageRoute(builder: (_) => HomeScreen(username: accountUsername)),
     );
   }
 
@@ -78,24 +123,61 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              // Username Field
+              // Username or Email Field
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Username',
+                  'Username or Email',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
               const SizedBox(height: 8),
               TextField(
-                controller: _usernameController,
+                controller: _identifierController,
                 decoration: InputDecoration(
-                  hintText: 'Enter your name',
+                  hintText: 'Enter username or email',
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Login As',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedRole,
+                    items: const [
+                      DropdownMenuItem(value: 'User', child: Text('User')),
+                      DropdownMenuItem(
+                        value: 'Volunteer',
+                        child: Text('Volunteer'),
+                      ),
+                    ],
+                    onChanged: _isLoading
+                        ? null
+                        : (value) {
+                            if (value == null) {
+                              return;
+                            }
+                            _updateSelectedRole(value);
+                          },
                   ),
                 ),
               ),

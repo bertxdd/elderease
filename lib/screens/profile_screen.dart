@@ -13,14 +13,17 @@ import 'home_screen.dart';
 import 'login_screen.dart';
 import 'notification_screen.dart';
 import 'your_service_screen.dart';
+import 'volunteer_home_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String username;
   final List<ServiceModel> services;
+  final bool isVolunteer;
   const ProfileScreen({
     super.key,
     required this.username,
     required this.services,
+    this.isVolunteer = false,
   });
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -95,7 +98,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _zipController.text = parts.$3;
 
     setState(() {
-      _headerName = profile.fullName.isNotEmpty ? profile.fullName : profile.username;
+      _headerName = profile.fullName.isNotEmpty
+          ? profile.fullName
+          : profile.username;
       _headerEmail = profile.email;
       _memberSince = profile.createdAt;
     });
@@ -219,7 +224,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final uri = Uri.parse(
-        'https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeQueryComponent(address)}&key=$googleMapsApiKey',
+        'https://api.geoapify.com/v1/geocode/search?text=${Uri.encodeQueryComponent(address)}&limit=1&apiKey=$geoapifyApiKey',
       );
 
       final response = await http.get(uri);
@@ -232,28 +237,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      final results = decoded['results'];
-      if (results is! List || results.isEmpty) {
+      final features = decoded['features'];
+      if (features is! List || features.isEmpty) {
         return;
       }
 
-      final first = results.first;
+      final first = features.first;
       if (first is! Map<String, dynamic>) {
         return;
       }
 
-      final geometry = first['geometry'];
-      if (geometry is! Map<String, dynamic>) {
+      final properties = first['properties'];
+      if (properties is! Map<String, dynamic>) {
         return;
       }
 
-      final location = geometry['location'];
-      if (location is! Map<String, dynamic>) {
-        return;
-      }
-
-      final lat = (location['lat'] as num?)?.toDouble();
-      final lng = (location['lng'] as num?)?.toDouble();
+      final lat = (properties['lat'] as num?)?.toDouble();
+      final lng = (properties['lon'] as num?)?.toDouble();
 
       if (lat == null || lng == null) {
         return;
@@ -389,193 +389,253 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               )
             : Column(
-          children: [
-            // Profile header card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF3E0),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
                 children: [
-                  CircleAvatar(radius: 35, backgroundColor: Colors.grey[300]),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _headerName.isNotEmpty ? _headerName : widget.username,
+                  // Profile header card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 35,
+                          backgroundColor: Colors.grey[300],
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _headerName.isNotEmpty
+                                  ? _headerName
+                                  : widget.username,
+                              style: TextStyle(
+                                color: Color(0xFFE8922A),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                            Text(
+                              _headerEmail.isNotEmpty ? _headerEmail : '-',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            Text(
+                              _memberSinceLabel(),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Personal Information section
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Personal Information',
+                          style: TextStyle(
+                            color: Color(0xFFE8922A),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildField('Full Name', _fullNameController),
+                        const SizedBox(height: 12),
+                        _buildField('Email', _emailController),
+                        const SizedBox(height: 12),
+                        _buildField('Phone Number', _phoneController),
+                        const SizedBox(height: 12),
+                        _buildField(
+                          'Date of Birth',
+                          _dobController,
+                          readOnly: true,
+                          onTap: _pickBirthday,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Address Information section
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Address Information',
+                          style: TextStyle(
+                            color: Color(0xFFE8922A),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildField('Street Address', _streetController),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildField('City', _cityController),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildField('Zip Code', _zipController),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : _saveProfile,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE8922A),
+                      ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Save Changes',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: _logout,
+                      icon: const Icon(Icons.logout, color: Color(0xFFB00020)),
+                      label: const Text(
+                        'Log Out',
                         style: TextStyle(
-                          color: Color(0xFFE8922A),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          color: Color(0xFFB00020),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Text(
-                        _headerEmail.isNotEmpty ? _headerEmail : '-',
-                        style: const TextStyle(fontSize: 14),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFB00020)),
                       ),
-                      Text(
-                        _memberSinceLabel(),
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Personal Information section
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Personal Information',
-                    style: TextStyle(
-                      color: Color(0xFFE8922A),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _buildField('Full Name', _fullNameController),
-                  const SizedBox(height: 12),
-                  _buildField('Email', _emailController),
-                  const SizedBox(height: 12),
-                  _buildField('Phone Number', _phoneController),
-                  const SizedBox(height: 12),
-                  _buildField(
-                    'Date of Birth',
-                    _dobController,
-                    readOnly: true,
-                    onTap: _pickBirthday,
-                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-            // Address Information section
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Address Information',
-                    style: TextStyle(
-                      color: Color(0xFFE8922A),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildField('Street Address', _streetController),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(child: _buildField('City', _cityController)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _buildField('Zip Code', _zipController)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isSaving ? null : _saveProfile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE8922A),
-                ),
-                child: _isSaving
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Save Changes',
-                        style: TextStyle(color: Colors.white, fontSize: 18),
+      ),
+      bottomNavigationBar: widget.isVolunteer
+          ? BottomNavigationBar(
+              currentIndex: 2,
+              onTap: (i) {
+                if (i == 0) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => VolunteerHomeScreen(
+                        username: widget.username,
+                        services: widget.services,
+                        initialTab: 0,
                       ),
-              ),
+                    ),
+                  );
+                } else if (i == 1) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => VolunteerHomeScreen(
+                        username: widget.username,
+                        services: widget.services,
+                        initialTab: 1,
+                      ),
+                    ),
+                  );
+                }
+              },
+              selectedItemColor: const Color(0xFFE8922A),
+              unselectedItemColor: Colors.grey,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.list_alt),
+                  label: 'Open',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.assignment_turned_in_outlined),
+                  label: 'Assigned',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline),
+                  label: 'Account',
+                ),
+              ],
+            )
+          : BottomNav(
+              currentIndex: 3,
+              onTap: (i) {
+                if (i == 0) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => HomeScreen(
+                        username: widget.username,
+                        initialServices: widget.services,
+                      ),
+                    ),
+                  );
+                } else if (i == 1) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => YourServiceScreen(
+                        username: widget.username,
+                        services: widget.services,
+                      ),
+                    ),
+                  );
+                } else if (i == 2) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => NotificationScreen(
+                        username: widget.username,
+                        services: widget.services,
+                      ),
+                    ),
+                  );
+                }
+              },
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton.icon(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout, color: Color(0xFFB00020)),
-                label: const Text(
-                  'Log Out',
-                  style: TextStyle(
-                    color: Color(0xFFB00020),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFFB00020)),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomNav(
-        currentIndex: 3,
-        onTap: (i) {
-          if (i == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => HomeScreen(
-                  username: widget.username,
-                  initialServices: widget.services,
-                ),
-              ),
-            );
-          } else if (i == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => YourServiceScreen(
-                  username: widget.username,
-                  services: widget.services,
-                ),
-              ),
-            );
-          } else if (i == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => NotificationScreen(
-                  username: widget.username,
-                  services: widget.services,
-                ),
-              ),
-            );
-          }
-        },
-      ),
     );
   }
 }

@@ -25,6 +25,7 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
   final _repository = const RequestRepository();
   List<ServiceRequestModel> _requests = [];
   bool _isLoadingRequests = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -92,6 +93,17 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final normalizedQuery = _searchQuery.trim().toLowerCase();
+    final filteredServices = widget.services.where((service) {
+      if (normalizedQuery.isEmpty) {
+        return true;
+      }
+
+      return service.name.toLowerCase().contains(normalizedQuery) ||
+          service.description.toLowerCase().contains(normalizedQuery) ||
+          service.category.toLowerCase().contains(normalizedQuery);
+    }).toList();
+
     return Scaffold(
       backgroundColor: const Color(0xFFE8F0EE),
       appBar: AppBar(
@@ -122,6 +134,11 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
           children: [
             // Search bar
             TextField(
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
               decoration: InputDecoration(
                 hintText: 'Search...',
                 filled: true,
@@ -143,10 +160,17 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
                         style: TextStyle(color: Colors.grey, fontSize: 16),
                       ),
                     )
+                  : filteredServices.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No matching services found.',
+                            style: TextStyle(color: Colors.grey, fontSize: 16),
+                          ),
+                        )
                   : ListView.builder(
-                      itemCount: widget.services.length,
+                      itemCount: filteredServices.length,
                       itemBuilder: (context, index) {
-                        final service = widget.services[index];
+                        final service = filteredServices[index];
                         final status = _latestStatusForService(service);
                         final isCompleted = status == RequestStatus.completed;
                         final statusLabel = status?.name ?? 'not_requested';

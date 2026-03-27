@@ -28,8 +28,8 @@ try {
          LIMIT 1'
     );
     $lookup->execute([
-        ':request_id' => ctype_digit($requestId) ? (int)$requestId : -1,
-        ':external_request_id' => $requestId,
+        'request_id' => ctype_digit($requestId) ? (int)$requestId : -1,
+        'external_request_id' => $requestId,
     ]);
 
     $req = $lookup->fetch();
@@ -46,11 +46,11 @@ try {
          VALUES (:request_id, :volunteer_id, :user_id, :rating_score, :comments)'
     );
     $insert->execute([
-        ':request_id' => (int)$req['request_id'],
-        ':volunteer_id' => (int)$req['volunteer_id'],
-        ':user_id' => (int)$req['user_id'],
-        ':rating_score' => $rating,
-        ':comments' => $comments,
+        'request_id' => (int)$req['request_id'],
+        'volunteer_id' => (int)$req['volunteer_id'],
+        'user_id' => (int)$req['user_id'],
+        'rating_score' => $rating,
+        'comments' => $comments,
     ]);
 
     // Recompute aggregate volunteer rating.
@@ -64,7 +64,7 @@ try {
          ) r ON r.volunteer_id = v.volunteer_id
          SET v.rating_avg = r.avg_rating'
     );
-    $recompute->execute([':volunteer_id' => (int)$req['volunteer_id']]);
+    $recompute->execute(['volunteer_id' => (int)$req['volunteer_id']]);
 
     respond(200, ['success' => true]);
 } catch (Throwable $e) {

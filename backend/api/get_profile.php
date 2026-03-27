@@ -22,7 +22,7 @@ try {
          WHERE username = :username
          LIMIT 1'
     );
-    $stmt->execute([':username' => $username]);
+    $stmt->execute(['username' => $username]);
     $user = $stmt->fetch();
 
     if (!$user) {

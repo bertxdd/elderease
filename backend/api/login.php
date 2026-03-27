@@ -10,27 +10,40 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $input = read_json_body();
-$username = trim((string)($input['username'] ?? ''));
+$identifier = trim((string)($input['identifier'] ?? ($input['username'] ?? '')));
 $password = (string)($input['password'] ?? '');
+$role = strtolower(trim((string)($input['role'] ?? 'user')));
 
-if ($username === '' || $password === '') {
-    respond(422, ['success' => false, 'message' => 'username and password are required']);
+if ($identifier === '' || $password === '') {
+    respond(422, ['success' => false, 'message' => 'identifier and password are required']);
+}
+
+if (!in_array($role, ['user', 'volunteer'], true)) {
+    respond(422, ['success' => false, 'message' => 'role must be user or volunteer']);
 }
 
 try {
     $pdo = db();
 
     $stmt = $pdo->prepare(
-        'SELECT user_id, full_name, username, email, password_hash, phone_number, birthday, address, created_at
+        'SELECT user_id, full_name, username, role, email, password_hash, phone_number, birthday, address, created_at
          FROM users
-         WHERE username = :username
+            WHERE username = :identifier_username OR email = :identifier_email
          LIMIT 1'
     );
-    $stmt->execute([':username' => $username]);
+        $stmt->execute([
+            'identifier_username' => $identifier,
+            'identifier_email' => $identifier,
+        ]);
     $user = $stmt->fetch();
 
     if (!$user || !password_verify($password, (string)$user['password_hash'])) {
         respond(401, ['success' => false, 'message' => 'Invalid username or password']);
+    }
+
+    $storedRole = strtolower((string)($user['role'] ?? 'user'));
+    if ($storedRole !== $role) {
+        respond(403, ['success' => false, 'message' => 'Role mismatch for this account']);
     }
 
     respond(200, [
@@ -39,6 +52,7 @@ try {
             'user_id' => (int)$user['user_id'],
             'full_name' => (string)$user['full_name'],
             'username' => (string)$user['username'],
+            'role' => $storedRole,
             'email' => (string)($user['email'] ?? ''),
             'phone_number' => (string)($user['phone_number'] ?? ''),
             'birthday' => (string)($user['birthday'] ?? ''),

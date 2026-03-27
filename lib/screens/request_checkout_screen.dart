@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../models/service_model.dart';
 import '../models/service_request_model.dart';
+import '../services/profile_api_service.dart';
 import '../services/request_repository.dart';
 import 'notification_screen.dart';
+import 'profile_screen.dart';
 
 class RequestCheckoutScreen extends StatefulWidget {
   final String username;
@@ -20,15 +22,43 @@ class RequestCheckoutScreen extends StatefulWidget {
 }
 
 class _RequestCheckoutScreenState extends State<RequestCheckoutScreen> {
-  final _streetController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _zipController = TextEditingController();
   final _notesController = TextEditingController();
   final _repository = const RequestRepository();
+  final _profileService = const ProfileApiService();
 
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   bool _isSubmitting = false;
+  bool _isLoadingProfile = true;
+  String _profileAddress = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileAddress();
+  }
+
+  Future<void> _loadProfileAddress() async {
+    try {
+      final profile = await _profileService.fetchProfile(widget.username);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _profileAddress = profile.address.trim();
+        _isLoadingProfile = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _profileAddress = '';
+        _isLoadingProfile = false;
+      });
+      _showMessage('Unable to load profile address. Please try again.');
+    }
+  }
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -61,10 +91,8 @@ class _RequestCheckoutScreenState extends State<RequestCheckoutScreen> {
       return;
     }
 
-    if (_streetController.text.trim().isEmpty ||
-        _cityController.text.trim().isEmpty ||
-        _zipController.text.trim().isEmpty) {
-      _showMessage('Please complete your address.');
+    if (_profileAddress.isEmpty) {
+      _showMessage('Please set your address in Profile first.');
       return;
     }
 
@@ -83,8 +111,7 @@ class _RequestCheckoutScreenState extends State<RequestCheckoutScreen> {
       username: widget.username,
       services: widget.services.map(RequestServiceItem.fromService).toList(),
       scheduledAt: scheduled,
-      address:
-          '${_streetController.text.trim()}, ${_cityController.text.trim()}, ${_zipController.text.trim()}',
+        address: _profileAddress,
       notes: _notesController.text.trim(),
       status: RequestStatus.requested,
       createdAt: DateTime.now(),
@@ -123,6 +150,23 @@ class _RequestCheckoutScreenState extends State<RequestCheckoutScreen> {
         backgroundColor: const Color(0xFFE8922A),
       ),
     );
+  }
+
+  Future<void> _goToProfile() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProfileScreen(
+          username: widget.username,
+          services: widget.services,
+        ),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+    await _loadProfileAddress();
   }
 
   @override
@@ -200,33 +244,44 @@ class _RequestCheckoutScreenState extends State<RequestCheckoutScreen> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: _streetController,
-              decoration: const InputDecoration(
-                labelText: 'Street Address',
-                filled: true,
-                fillColor: Colors.white,
+            if (_isLoadingProfile)
+              const LinearProgressIndicator(color: Color(0xFFE8922A))
+            else
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  _profileAddress.isEmpty
+                      ? 'No profile address found.'
+                      : _profileAddress,
+                  style: TextStyle(
+                    color: _profileAddress.isEmpty ? Colors.redAccent : Colors.black87,
+                  ),
+                ),
               ),
-            ),
             const SizedBox(height: 8),
-            TextField(
-              controller: _cityController,
-              decoration: const InputDecoration(
-                labelText: 'City',
-                filled: true,
-                fillColor: Colors.white,
+            if (!_isLoadingProfile && _profileAddress.isEmpty)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _goToProfile,
+                  icon: const Icon(Icons.person_outline),
+                  label: const Text('Set Address in Profile'),
+                ),
+              )
+            else
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _goToProfile,
+                  icon: const Icon(Icons.edit_location_alt_outlined),
+                  label: const Text('Update Address in Profile'),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _zipController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Zip Code',
-                filled: true,
-                fillColor: Colors.white,
-              ),
-            ),
             const SizedBox(height: 20),
             const SizedBox(height: 20),
             TextField(
@@ -243,7 +298,9 @@ class _RequestCheckoutScreenState extends State<RequestCheckoutScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submitRequest,
+                onPressed: _isSubmitting || _isLoadingProfile || _profileAddress.isEmpty
+                    ? null
+                    : _submitRequest,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE8922A),
                 ),

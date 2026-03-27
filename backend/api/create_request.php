@@ -29,7 +29,7 @@ try {
 
     // Ensure user exists. In production, replace this with authenticated user ID.
     $findUser = $pdo->prepare('SELECT user_id FROM users WHERE username = :username LIMIT 1');
-    $findUser->execute([':username' => $username]);
+    $findUser->execute(['username' => $username]);
     $userId = (int)($findUser->fetchColumn() ?: 0);
 
     if ($userId <= 0) {
@@ -37,9 +37,9 @@ try {
             'INSERT INTO users (full_name, username, password_hash) VALUES (:full_name, :username, :password_hash)'
         );
         $insertUser->execute([
-            ':full_name' => $username,
-            ':username' => $username,
-            ':password_hash' => password_hash('temporary', PASSWORD_BCRYPT),
+            'full_name' => $username,
+            'username' => $username,
+            'password_hash' => password_hash('temporary', PASSWORD_BCRYPT),
         ]);
         $userId = (int)$pdo->lastInsertId();
     }
@@ -49,7 +49,7 @@ try {
         $dup = $pdo->prepare(
             'SELECT request_id FROM service_requests WHERE external_request_id = :external_request_id LIMIT 1'
         );
-        $dup->execute([':external_request_id' => $externalRequestId]);
+        $dup->execute(['external_request_id' => $externalRequestId]);
         $existingId = (int)($dup->fetchColumn() ?: 0);
         if ($existingId > 0) {
             $pdo->rollBack();
@@ -65,12 +65,12 @@ try {
     );
 
     $insertRequest->execute([
-        ':external_request_id' => $externalRequestId !== '' ? $externalRequestId : null,
-        ':user_id' => $userId,
-        ':schedule_datetime' => date('Y-m-d H:i:s', strtotime($scheduledAt)),
-        ':address' => $address,
-        ':status' => $status,
-        ':notes' => $notes,
+        'external_request_id' => $externalRequestId !== '' ? $externalRequestId : null,
+        'user_id' => $userId,
+        'schedule_datetime' => date('Y-m-d H:i:s', strtotime($scheduledAt)),
+        'address' => $address,
+        'status' => $status,
+        'notes' => $notes,
     ]);
 
     $requestId = (int)$pdo->lastInsertId();
@@ -105,22 +105,22 @@ try {
                 'INSERT INTO services (service_name, description) VALUES (:service_name, :description)'
             );
             $insertNewService->execute([
-                ':service_name' => $serviceName,
-                ':description' => 'Auto-created from mobile request',
+                'service_name' => $serviceName,
+                'description' => 'Auto-created from mobile request',
             ]);
             $serviceId = (int)$pdo->lastInsertId();
         } else {
             $upsertService->execute([
-                ':service_id' => $serviceId,
-                ':service_name' => $serviceName,
-                ':description' => 'Synced from mobile request',
+                'service_id' => $serviceId,
+                'service_name' => $serviceName,
+                'description' => 'Synced from mobile request',
             ]);
         }
 
         $insertItem->execute([
-            ':request_id' => $requestId,
-            ':service_id' => $serviceId,
-            ':quantity' => $quantity,
+            'request_id' => $requestId,
+            'service_id' => $serviceId,
+            'quantity' => $quantity,
         ]);
     }
 

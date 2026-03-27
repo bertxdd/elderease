@@ -22,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const int _currentTab = 0;
   // This list holds services the user has added
   late final List<ServiceModel> _myServices;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -90,6 +91,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final normalizedQuery = _searchQuery.trim().toLowerCase();
+    final filteredCategories = [
+      'Heavy Household\nChores',
+      'Home Maintenance\n& Support',
+      'Errands and\nLogistics',
+    ].where((category) {
+      if (normalizedQuery.isEmpty) {
+        return true;
+      }
+      return category.replaceAll('\n', ' ').toLowerCase().contains(normalizedQuery);
+    }).toList();
+
+    final filteredServices = allServices.where((service) {
+      if (normalizedQuery.isEmpty) {
+        return true;
+      }
+
+      return service.name.toLowerCase().contains(normalizedQuery) ||
+          service.description.toLowerCase().contains(normalizedQuery) ||
+          service.category.toLowerCase().contains(normalizedQuery);
+    }).toList();
+
     return Scaffold(
       backgroundColor: const Color(0xFFE8F0EE),
       appBar: AppBar(
@@ -118,6 +141,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             // Search Bar
             TextField(
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
               decoration: InputDecoration(
                 hintText: 'Search...',
                 prefixIcon: const Icon(Icons.search, color: Colors.grey),
@@ -136,14 +164,15 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildCategoryCard('Heavy Household\nChores'),
-                const SizedBox(width: 8),
-                _buildCategoryCard('Home Maintenance\n& Support'),
-                const SizedBox(width: 8),
-                _buildCategoryCard('Errands and\nLogistics'),
-              ],
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: filteredCategories
+                  .map((category) => SizedBox(
+                        width: (MediaQuery.of(context).size.width - 48) / 3,
+                        child: _buildCategoryCard(category),
+                      ))
+                  .toList(),
             ),
             const SizedBox(height: 24),
             // Popular Services
@@ -152,20 +181,29 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.75,
+            if (filteredServices.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Text(
+                  'No matching services found.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.75,
+                ),
+                itemCount: filteredServices.length,
+                itemBuilder: (context, index) {
+                  return _buildServiceCard(filteredServices[index]);
+                },
               ),
-              itemCount: allServices.length,
-              itemBuilder: (context, index) {
-                return _buildServiceCard(allServices[index]);
-              },
-            ),
           ],
         ),
       ),
@@ -212,41 +250,39 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Build a single category card
   Widget _buildCategoryCard(String title) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CategoryScreen(
-              category: title.replaceAll('\n', ' '),
-              services: allServices
-                  .where((s) => s.category == title.replaceAll('\n', ' '))
-                  .toList(),
-              onAdd: (s) {
-                if (!_myServices.any((ms) => ms.id == s.id)) {
-                  setState(() => _myServices.add(s));
-                }
-              },
-            ),
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CategoryScreen(
+            category: title.replaceAll('\n', ' '),
+            services: allServices
+                .where((s) => s.category == title.replaceAll('\n', ' '))
+                .toList(),
+            onAdd: (s) {
+              if (!_myServices.any((ms) => ms.id == s.id)) {
+                setState(() => _myServices.add(s));
+              }
+            },
           ),
         ),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              Container(height: 60, color: Colors.grey[300]),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11),
-              ),
-            ],
-          ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Container(height: 60, color: Colors.grey[300]),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11),
+            ),
+          ],
         ),
       ),
     );

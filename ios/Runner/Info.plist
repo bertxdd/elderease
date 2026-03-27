@@ -47,7 +47,5 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>ElderEase uses your location to show volunteer distance and route guidance.</string>
-	<key>GOOGLE_MAPS_API_KEY</key>
-	<string>$(GOOGLE_MAPS_API_KEY)</string>
 </dict>
 </plist>

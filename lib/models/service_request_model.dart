@@ -44,6 +44,9 @@ class ServiceRequestModel {
   final DateTime createdAt;
   final bool synced;
   final String? helperName;
+  final double? volunteerLat;
+  final double? volunteerLng;
+  final DateTime? volunteerLocationUpdatedAt;
 
   const ServiceRequestModel({
     required this.id,
@@ -56,6 +59,9 @@ class ServiceRequestModel {
     required this.createdAt,
     required this.synced,
     this.helperName,
+    this.volunteerLat,
+    this.volunteerLng,
+    this.volunteerLocationUpdatedAt,
   });
 
   String get statusLabel {
@@ -84,6 +90,9 @@ class ServiceRequestModel {
     DateTime? createdAt,
     bool? synced,
     String? helperName,
+    double? volunteerLat,
+    double? volunteerLng,
+    DateTime? volunteerLocationUpdatedAt,
   }) {
     return ServiceRequestModel(
       id: id ?? this.id,
@@ -96,6 +105,10 @@ class ServiceRequestModel {
       createdAt: createdAt ?? this.createdAt,
       synced: synced ?? this.synced,
       helperName: helperName ?? this.helperName,
+      volunteerLat: volunteerLat ?? this.volunteerLat,
+      volunteerLng: volunteerLng ?? this.volunteerLng,
+      volunteerLocationUpdatedAt:
+          volunteerLocationUpdatedAt ?? this.volunteerLocationUpdatedAt,
     );
   }
 
@@ -117,6 +130,11 @@ class ServiceRequestModel {
           DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
       synced: json['synced'] as bool? ?? true,
       helperName: json['helper_name']?.toString(),
+      volunteerLat: (json['volunteer_lat'] as num?)?.toDouble(),
+      volunteerLng: (json['volunteer_lng'] as num?)?.toDouble(),
+      volunteerLocationUpdatedAt: DateTime.tryParse(
+        json['volunteer_location_updated_at']?.toString() ?? '',
+      ),
     );
   }
 
@@ -132,6 +150,9 @@ class ServiceRequestModel {
       'created_at': createdAt.toIso8601String(),
       'synced': synced,
       'helper_name': helperName,
+      'volunteer_lat': volunteerLat,
+      'volunteer_lng': volunteerLng,
+      'volunteer_location_updated_at': volunteerLocationUpdatedAt?.toIso8601String(),
     };
   }
 

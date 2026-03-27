@@ -36,8 +36,9 @@ dependencies:
   shared_preferences: ^2.2.2
   # For PHP API communication
   http: ^1.2.2
-  # For Google Maps (helper tracking)
-  google_maps_flutter: ^2.5.0
+  # For Geoapify/OpenStreetMap map rendering
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
   # For volunteer GPS location
   geolocator: ^13.0.1
   # Beautiful icons

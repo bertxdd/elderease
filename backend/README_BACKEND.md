@@ -69,6 +69,7 @@ Current Flutter config already uses this in `lib/config/app_config.dart`.
 {
   "full_name": "Margrethe V. Gilpo",
   "username": "margrethe",
+  "role": "user",
   "email": "mg@gmail.com",
   "password": "secret123",
   "phone_number": "09086149697",
@@ -83,8 +84,9 @@ Current Flutter config already uses this in `lib/config/app_config.dart`.
 
 ```json
 {
-  "username": "margrethe",
-  "password": "secret123"
+  "identifier": "margrethe",
+  "password": "secret123",
+  "role": "user"
 }
 ```
 

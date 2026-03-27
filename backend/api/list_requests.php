@@ -26,6 +26,9 @@ try {
             r.address,
             r.status,
             r.notes,
+            r.volunteer_lat,
+            r.volunteer_lng,
+            r.volunteer_location_updated_at,
             r.created_at,
             v.full_name AS helper_name
          FROM service_requests r
@@ -34,7 +37,7 @@ try {
          WHERE u.username = :username
          ORDER BY r.created_at DESC'
     );
-    $stmt->execute([':username' => $username]);
+    $stmt->execute(['username' => $username]);
     $rows = $stmt->fetchAll();
 
     $serviceStmt = $pdo->prepare(
@@ -52,7 +55,7 @@ try {
     foreach ($rows as $row) {
         $requestId = (int)$row['request_id'];
 
-        $serviceStmt->execute([':request_id' => $requestId]);
+        $serviceStmt->execute(['request_id' => $requestId]);
         $serviceRows = $serviceStmt->fetchAll();
 
         $services = [];
@@ -75,6 +78,11 @@ try {
             'created_at' => (string)$row['created_at'],
             'synced' => true,
             'helper_name' => $row['helper_name'] !== null ? (string)$row['helper_name'] : null,
+            'volunteer_lat' => $row['volunteer_lat'] !== null ? (float)$row['volunteer_lat'] : null,
+            'volunteer_lng' => $row['volunteer_lng'] !== null ? (float)$row['volunteer_lng'] : null,
+            'volunteer_location_updated_at' => $row['volunteer_location_updated_at'] !== null
+                ? (string)$row['volunteer_location_updated_at']
+                : null,
         ];
     }
 

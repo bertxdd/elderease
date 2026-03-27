@@ -1,9 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/maps_config.dart';
@@ -30,8 +31,11 @@ class VolunteerScreen extends StatefulWidget {
 class _VolunteerScreenState extends State<VolunteerScreen> {
   LatLng? _seniorLocation;
   LatLng? _volunteerLocation;
+  List<LatLng> _routePolyline = [];
   List<String> _directionSteps = [];
   String _distanceLabel = '-';
+  String _mapUnavailableMessage =
+      'Map unavailable. Please save a valid address in profile and allow location permission.';
   bool _isLoadingMap = true;
 
   @override
@@ -46,17 +50,36 @@ class _VolunteerScreenState extends State<VolunteerScreen> {
     final savedHome = await _loadSeniorHomeLocation();
     final volunteer = await _getVolunteerLocation();
 
+    String? unavailableReason;
+    if (savedHome == null && volunteer == null) {
+      unavailableReason =
+          'Map unavailable. Please save a valid address in profile and enable location services and permission.';
+    } else if (savedHome == null) {
+      unavailableReason =
+          'Map unavailable. Please save a valid address in profile first.';
+    } else if (volunteer == null) {
+      unavailableReason =
+          'Map unavailable. Please enable location services and allow location permission first.';
+    }
+
     if (savedHome == null || volunteer == null) {
       if (mounted) {
-        setState(() => _isLoadingMap = false);
+        setState(() {
+          _isLoadingMap = false;
+          _seniorLocation = savedHome;
+          _volunteerLocation = volunteer;
+          _routePolyline = [];
+          _directionSteps = [];
+          _distanceLabel = '-';
+          if (unavailableReason != null) {
+            _mapUnavailableMessage = unavailableReason;
+          }
+        });
       }
       return;
     }
 
-    await _loadDirections(
-      origin: volunteer,
-      destination: savedHome,
-    );
+    await _loadDirections(origin: volunteer, destination: savedHome);
 
     if (!mounted) {
       return;
@@ -66,6 +89,7 @@ class _VolunteerScreenState extends State<VolunteerScreen> {
       _seniorLocation = savedHome;
       _volunteerLocation = volunteer;
       _isLoadingMap = false;
+      _mapUnavailableMessage = '';
     });
   }
 
@@ -106,7 +130,7 @@ class _VolunteerScreenState extends State<VolunteerScreen> {
   }) async {
     try {
       final uri = Uri.parse(
-        'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&mode=driving&key=$googleMapsApiKey',
+        'https://api.geoapify.com/v1/routing?waypoints=${origin.latitude},${origin.longitude}|${destination.latitude},${destination.longitude}&mode=drive&details=instruction_details&apiKey=$geoapifyApiKey',
       );
 
       final response = await http.get(uri);
@@ -119,44 +143,76 @@ class _VolunteerScreenState extends State<VolunteerScreen> {
         return;
       }
 
-      final routes = decoded['routes'];
-      if (routes is! List || routes.isEmpty) {
+      final features = decoded['features'];
+      if (features is! List || features.isEmpty) {
         return;
       }
 
-      final route = routes.first;
-      if (route is! Map<String, dynamic>) {
+      final feature = features.first;
+      if (feature is! Map<String, dynamic>) {
         return;
       }
 
-      final legs = route['legs'];
-      if (legs is! List || legs.isEmpty) {
+      final geometry = feature['geometry'];
+      if (geometry is! Map<String, dynamic>) {
         return;
       }
 
-      final leg = legs.first;
-      if (leg is! Map<String, dynamic>) {
+      final coordinates = geometry['coordinates'];
+      if (coordinates is! List) {
         return;
       }
 
-      final distance = leg['distance'];
-      final distanceText = distance is Map<String, dynamic>
-          ? (distance['text'] as String?)
-          : null;
+      final polyline = <LatLng>[];
+      for (final point in coordinates) {
+        if (point is! List || point.length < 2) {
+          continue;
+        }
 
-      final stepsRaw = leg['steps'];
+        final lon = (point[0] as num?)?.toDouble();
+        final lat = (point[1] as num?)?.toDouble();
+        if (lat == null || lon == null) {
+          continue;
+        }
+        polyline.add(LatLng(lat, lon));
+      }
+
+      final properties = feature['properties'];
+      if (properties is! Map<String, dynamic>) {
+        return;
+      }
+
+      final distanceMeters = (properties['distance'] as num?)?.toDouble();
+      final distanceText = distanceMeters == null
+          ? null
+          : '${(distanceMeters / 1000).toStringAsFixed(1)} km';
+
       final steps = <String>[];
-      if (stepsRaw is List) {
-        for (final step in stepsRaw) {
-          if (step is! Map<String, dynamic>) {
-            continue;
-          }
-          final instruction = step['html_instructions'] as String?;
-          final cleanInstruction = _stripHtml(instruction ?? '');
-          if (cleanInstruction.isNotEmpty) {
-            steps.add(cleanInstruction);
+      final legs = properties['legs'];
+      if (legs is List && legs.isNotEmpty) {
+        final firstLeg = legs.first;
+        if (firstLeg is Map<String, dynamic>) {
+          final stepsRaw = firstLeg['steps'];
+          if (stepsRaw is List) {
+            for (final step in stepsRaw) {
+              if (step is! Map<String, dynamic>) {
+                continue;
+              }
+
+              final instruction = step['instruction'];
+              if (instruction is Map<String, dynamic>) {
+                final text = instruction['text'] as String?;
+                if (text != null && text.trim().isNotEmpty) {
+                  steps.add(text.trim());
+                }
+              }
+            }
           }
         }
+      }
+
+      if (steps.isEmpty) {
+        steps.add('Follow the highlighted route to the destination.');
       }
 
       if (!mounted) {
@@ -166,36 +222,44 @@ class _VolunteerScreenState extends State<VolunteerScreen> {
       setState(() {
         _distanceLabel = distanceText ?? '-';
         _directionSteps = steps;
+        _routePolyline = polyline;
       });
     } catch (_) {
       // Keep the screen usable even if directions fail.
     }
   }
 
-  String _stripHtml(String html) {
-    return html.replaceAll(RegExp('<[^>]*>'), '').replaceAll('&nbsp;', ' ').trim();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final markers = <Marker>{
+    final markers = <Marker>[
       if (_seniorLocation != null)
         Marker(
-          markerId: const MarkerId('senior_home'),
-          position: _seniorLocation!,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-          infoWindow: const InfoWindow(title: 'Senior Home'),
+          point: _seniorLocation!,
+          width: 40,
+          height: 40,
+          child: const Icon(
+            Icons.location_on,
+            color: Color(0xFFD32F2F),
+            size: 36,
+          ),
         ),
       if (_volunteerLocation != null)
         Marker(
-          markerId: const MarkerId('volunteer_location'),
-          position: _volunteerLocation!,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-          infoWindow: const InfoWindow(title: 'Volunteer Location'),
+          point: _volunteerLocation!,
+          width: 40,
+          height: 40,
+          child: const Icon(
+            Icons.my_location,
+            color: Color(0xFF1976D2),
+            size: 30,
+          ),
         ),
-    };
+    ];
 
-    final cameraTarget = _seniorLocation ?? _volunteerLocation ?? const LatLng(14.5995, 120.9842);
+    final cameraTarget =
+        _seniorLocation ??
+        _volunteerLocation ??
+        const LatLng(14.5995, 120.9842);
 
     return Scaffold(
       backgroundColor: const Color(0xFFE8F0EE),
@@ -225,177 +289,209 @@ class _VolunteerScreenState extends State<VolunteerScreen> {
         padding: const EdgeInsets.all(16),
         child: SingleChildScrollView(
           child: Column(
-          children: [
-            // Volunteer Card
-            const Text(
-              'VOLUNTEER',
-              style: TextStyle(
-                color: Color(0xFFE8922A),
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+            children: [
+              const Text(
+                'VOLUNTEER',
+                style: TextStyle(
+                  color: Color(0xFFE8922A),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF3E0),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  // Profile picture circle
-                  CircleAvatar(radius: 30, backgroundColor: Colors.grey[300]),
-                  const SizedBox(width: 16),
-                  // Volunteer info
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Robert',
-                        style: TextStyle(
-                          color: Color(0xFFE8922A),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const Text('Robert@gmail.com', style: TextStyle(fontSize: 14)),
-                      const Text('09086149697', style: TextStyle(fontSize: 14)),
-                      Text(
-                        '$_distanceLabel away',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFFE8922A),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Google Map section
-            Container(
-              height: 260,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: _isLoadingMap
-                  ? const Center(
-                      child: CircularProgressIndicator(color: Color(0xFFE8922A)),
-                    )
-                  : (_seniorLocation == null || _volunteerLocation == null)
-                      ? const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Text(
-                              'Map unavailable. Please save a valid address in profile and allow location permission.',
-                              textAlign: TextAlign.center,
-                            ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3E0),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(radius: 30, backgroundColor: Colors.grey[300]),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Robert',
+                          style: TextStyle(
+                            color: Color(0xFFE8922A),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
                           ),
-                        )
-                      : GoogleMap(
-                          initialCameraPosition: CameraPosition(
-                            target: cameraTarget,
-                            zoom: 14,
-                          ),
-                          markers: markers,
-                          myLocationEnabled: true,
-                          myLocationButtonEnabled: true,
                         ),
-            ),
-            const SizedBox(height: 16),
-            // Directions section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Driving Directions',
-                    style: TextStyle(
-                      color: Color(0xFFE8922A),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                        const Text(
+                          'Robert@gmail.com',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        const Text(
+                          '09086149697',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        Text(
+                          '$_distanceLabel away',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFFE8922A),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (_directionSteps.isEmpty)
-                    const Text('Directions will appear here once route data is available.')
-                  else
-                    ..._directionSteps.asMap().entries.map(
-                      (entry) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text('${entry.key + 1}. ${entry.value}'),
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            // Services list
-            ...widget.services.map(
-              (service) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
+              const SizedBox(height: 16),
+              Container(
+                height: 260,
+                width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: ListTile(
-                  leading: Container(
-                    width: 60,
-                    height: 60,
-                    color: Colors.grey[300],
-                  ),
-                  title: Text(
-                    service.name,
-                    style: const TextStyle(
-                      color: Color(0xFFE8922A),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  trailing: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.grey,
-                  ),
-                ),
-              ),
-            ),
-            // Confirm button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Service confirmed! Volunteer is on the way.',
+                clipBehavior: Clip.antiAlias,
+                child: _isLoadingMap
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFE8922A),
+                        ),
+                      )
+                    : (_seniorLocation == null || _volunteerLocation == null)
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _mapUnavailableMessage,
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton.icon(
+                                onPressed: _loadMapAndDirections,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Retry'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFE8922A),
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : FlutterMap(
+                        options: MapOptions(
+                          initialCenter: cameraTarget,
+                          initialZoom: 14,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate: geoapifyTileUrlTemplate,
+                            userAgentPackageName: 'com.example.elderease',
+                          ),
+                          if (_routePolyline.isNotEmpty)
+                            PolylineLayer(
+                              polylines: [
+                                Polyline(
+                                  points: _routePolyline,
+                                  color: const Color(0xFFE8922A),
+                                  strokeWidth: 5,
+                                ),
+                              ],
+                            ),
+                          MarkerLayer(markers: markers),
+                        ],
                       ),
-                      backgroundColor: Color(0xFFE8922A),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE8922A),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'Confirm Service',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Driving Directions',
+                      style: TextStyle(
+                        color: Color(0xFFE8922A),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (_directionSteps.isEmpty)
+                      const Text(
+                        'Directions will appear here once route data is available.',
+                      )
+                    else
+                      ..._directionSteps.asMap().entries.map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text('${entry.key + 1}. ${entry.value}'),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+              ...widget.services.map(
+                (service) => Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    leading: Container(
+                      width: 60,
+                      height: 60,
+                      color: Colors.grey[300],
+                    ),
+                    title: Text(
+                      service.name,
+                      style: const TextStyle(
+                        color: Color(0xFFE8922A),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Service confirmed! Volunteer is on the way.',
+                        ),
+                        backgroundColor: Color(0xFFE8922A),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE8922A),
+                  ),
+                  child: const Text(
+                    'Confirm Service',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
           ),
         ),
       ),
@@ -409,16 +505,6 @@ class _VolunteerScreenState extends State<VolunteerScreen> {
                 builder: (_) => HomeScreen(
                   username: widget.username,
                   initialServices: widget.services,
-                ),
-              ),
-            );
-          } else if (i == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => YourServiceScreen(
-                  username: widget.username,
-                  services: widget.services,
                 ),
               ),
             );
@@ -437,6 +523,16 @@ class _VolunteerScreenState extends State<VolunteerScreen> {
               context,
               MaterialPageRoute(
                 builder: (_) => ProfileScreen(
+                  username: widget.username,
+                  services: widget.services,
+                ),
+              ),
+            );
+          } else if (i == 4) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => YourServiceScreen(
                   username: widget.username,
                   services: widget.services,
                 ),

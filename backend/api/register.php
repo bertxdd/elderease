@@ -14,6 +14,7 @@ $fullName = trim((string)($input['full_name'] ?? ''));
 $username = trim((string)($input['username'] ?? ''));
 $email = trim((string)($input['email'] ?? ''));
 $password = (string)($input['password'] ?? '');
+$role = strtolower(trim((string)($input['role'] ?? 'user')));
 $phone = trim((string)($input['phone_number'] ?? ''));
 $birthday = trim((string)($input['birthday'] ?? ''));
 $address = trim((string)($input['address'] ?? ''));
@@ -34,35 +35,40 @@ if ($birthday !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $birthday)) {
     respond(422, ['success' => false, 'message' => 'birthday must be YYYY-MM-DD']);
 }
 
+if (!in_array($role, ['user', 'volunteer'], true)) {
+    respond(422, ['success' => false, 'message' => 'role must be user or volunteer']);
+}
+
 try {
     $pdo = db();
 
     $check = $pdo->prepare('SELECT user_id FROM users WHERE username = :username LIMIT 1');
-    $check->execute([':username' => $username]);
+    $check->execute(['username' => $username]);
     if ($check->fetch()) {
         respond(409, ['success' => false, 'message' => 'Username already exists']);
     }
 
     if ($email !== '') {
         $checkEmail = $pdo->prepare('SELECT user_id FROM users WHERE email = :email LIMIT 1');
-        $checkEmail->execute([':email' => $email]);
+        $checkEmail->execute(['email' => $email]);
         if ($checkEmail->fetch()) {
             respond(409, ['success' => false, 'message' => 'Email already exists']);
         }
     }
 
     $insert = $pdo->prepare(
-        'INSERT INTO users (full_name, username, email, password_hash, phone_number, birthday, address)
-         VALUES (:full_name, :username, :email, :password_hash, :phone_number, :birthday, :address)'
+        'INSERT INTO users (full_name, username, role, email, password_hash, phone_number, birthday, address)
+         VALUES (:full_name, :username, :role, :email, :password_hash, :phone_number, :birthday, :address)'
     );
     $insert->execute([
-        ':full_name' => $fullName,
-        ':username' => $username,
-        ':email' => $email !== '' ? $email : null,
-        ':password_hash' => password_hash($password, PASSWORD_BCRYPT),
-        ':phone_number' => $phone !== '' ? $phone : null,
-        ':birthday' => $birthday !== '' ? $birthday : null,
-        ':address' => $address !== '' ? $address : null,
+        'full_name' => $fullName,
+        'username' => $username,
+        'role' => $role,
+        'email' => $email !== '' ? $email : null,
+        'password_hash' => password_hash($password, PASSWORD_BCRYPT),
+        'phone_number' => $phone !== '' ? $phone : null,
+        'birthday' => $birthday !== '' ? $birthday : null,
+        'address' => $address !== '' ? $address : null,
     ]);
 
     respond(201, [
@@ -71,6 +77,7 @@ try {
             'user_id' => (int)$pdo->lastInsertId(),
             'full_name' => $fullName,
             'username' => $username,
+            'role' => $role,
             'email' => $email,
             'phone_number' => $phone,
             'birthday' => $birthday,

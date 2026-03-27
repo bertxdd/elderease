@@ -37,8 +37,8 @@ try {
           'SELECT user_id FROM users WHERE email = :email AND username <> :username LIMIT 1'
       );
       $checkEmail->execute([
-          ':email' => $email,
-          ':username' => $username,
+          'email' => $email,
+          'username' => $username,
       ]);
       if ($checkEmail->fetch()) {
           respond(409, ['success' => false, 'message' => 'Email already in use']);
@@ -56,17 +56,17 @@ try {
     );
 
     $update->execute([
-        ':full_name' => $fullName,
-        ':email' => $email !== '' ? $email : null,
-        ':phone_number' => $phone !== '' ? $phone : null,
-        ':birthday' => $birthday !== '' ? $birthday : null,
-        ':address' => $address !== '' ? $address : null,
-        ':username' => $username,
+        'full_name' => $fullName,
+        'email' => $email !== '' ? $email : null,
+        'phone_number' => $phone !== '' ? $phone : null,
+        'birthday' => $birthday !== '' ? $birthday : null,
+        'address' => $address !== '' ? $address : null,
+        'username' => $username,
     ]);
 
     if ($update->rowCount() === 0) {
         $exists = $pdo->prepare('SELECT user_id FROM users WHERE username = :username LIMIT 1');
-        $exists->execute([':username' => $username]);
+        $exists->execute(['username' => $username]);
         if (!$exists->fetch()) {
             respond(404, ['success' => false, 'message' => 'User not found']);
         }

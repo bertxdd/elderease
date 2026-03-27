@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
   user_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   full_name VARCHAR(120) NOT NULL,
   username VARCHAR(80) NOT NULL UNIQUE,
+  role ENUM('user','volunteer') NOT NULL DEFAULT 'user',
   email VARCHAR(120) NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   phone_number VARCHAR(30) NULL,
@@ -51,6 +52,9 @@ CREATE TABLE IF NOT EXISTS service_requests (
   external_request_id VARCHAR(40) NULL UNIQUE,
   user_id INT UNSIGNED NOT NULL,
   volunteer_id INT UNSIGNED NULL,
+  volunteer_lat DECIMAL(10,7) NULL,
+  volunteer_lng DECIMAL(10,7) NULL,
+  volunteer_location_updated_at DATETIME NULL,
   schedule_datetime DATETIME NOT NULL,
   address TEXT NOT NULL,
   status ENUM('requested','matched','en_route','arrived','completed','cancelled')

@@ -14,6 +14,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
   final _authService = const AuthApiService();
+  String _selectedRole = 'User';
   bool _isLoading = false;
 
   Future<void> _register() async {
@@ -34,6 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       email: _emailController.text.trim(),
       password: _passwordController.text.trim(),
       phoneNumber: _phoneController.text.trim(),
+      role: _selectedRole.toLowerCase(),
     );
 
     if (!mounted) {
@@ -43,17 +45,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Color(0xFFE8922A),
-      ),
+      SnackBar(content: Text(message), backgroundColor: Color(0xFFE8922A)),
     );
     Navigator.pushReplacement(
       context,
@@ -113,6 +112,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 32),
               _buildField('Full Name', _nameController),
               _buildField('Email', _emailController),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Register As',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedRole,
+                    items: const [
+                      DropdownMenuItem(value: 'User', child: Text('User')),
+                      DropdownMenuItem(
+                        value: 'Volunteer',
+                        child: Text('Volunteer'),
+                      ),
+                    ],
+                    onChanged: _isLoading
+                        ? null
+                        : (value) {
+                            if (value == null) {
+                              return;
+                            }
+                            setState(() => _selectedRole = value);
+                          },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               _buildField('Phone Number', _phoneController),
               _buildField('Password', _passwordController, obscure: true),
               SizedBox(
