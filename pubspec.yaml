@@ -68,6 +68,17 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  assets:
+    - lib/screens/errands and logistics.png
+    - lib/screens/garden maintenance.png
+    - lib/screens/grocery cpllection.png
+    - lib/screens/heavy household chores.png
+    - lib/screens/home maintenance.png
+    - lib/screens/lpg gas tank replacement.png
+    - lib/screens/medical prescription pickup.png
+    - lib/screens/utility assistance.png
+    - lib/screens/water container refill.png
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

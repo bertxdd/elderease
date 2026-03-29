@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/service_image_config.dart';
 import '../models/service_model.dart';
 import '../models/service_request_model.dart';
 import '../services/request_repository.dart';
@@ -183,10 +184,11 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
                           ),
                           child: ListTile(
                             onTap: () => _trackService(service),
-                            leading: Container(
-                              width: 60,
+                            leading: buildMappedImage(
+                              serviceImagePath(service.name),
                               height: 60,
-                              color: Colors.grey[300],
+                              width: 60,
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             title: Text(
                               service.name,

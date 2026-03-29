@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/service_image_config.dart';
 import '../models/service_model.dart';
 import '../widgets/bottom_nav.dart';
 import 'category_screen.dart';
@@ -20,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const int _currentTab = 0;
+
   // This list holds services the user has added
   late final List<ServiceModel> _myServices;
   String _searchQuery = '';
@@ -38,14 +40,14 @@ class _HomeScreenState extends State<HomeScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
+            SizedBox(
               height: 100,
               width: 100,
-              color: Colors.grey[300],
-              child: const Icon(
-                Icons.home_repair_service,
-                size: 50,
-                color: Colors.grey,
+              child: buildMappedImage(
+                serviceImagePath(service.name),
+                height: 100,
+                width: 100,
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
             const SizedBox(height: 12),
@@ -250,14 +252,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Build a single category card
   Widget _buildCategoryCard(String title) {
+    final normalizedTitle = title.replaceAll('\n', ' ');
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => CategoryScreen(
-            category: title.replaceAll('\n', ' '),
+            category: normalizedTitle,
             services: allServices
-                .where((s) => s.category == title.replaceAll('\n', ' '))
+                .where((s) => s.category == normalizedTitle)
                 .toList(),
             onAdd: (s) {
               if (!_myServices.any((ms) => ms.id == s.id)) {
@@ -275,7 +279,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Column(
           children: [
-            Container(height: 60, color: Colors.grey[300]),
+            SizedBox(
+              height: 60,
+              width: double.infinity,
+              child: buildMappedImage(
+                categoryImagePath(normalizedTitle),
+                height: 60,
+                width: double.infinity,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             const SizedBox(height: 6),
             Text(
               title,
@@ -300,7 +313,16 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(height: 80, color: Colors.grey[300]),
+            SizedBox(
+              height: 80,
+              width: double.infinity,
+              child: buildMappedImage(
+                serviceImagePath(service.name),
+                height: 80,
+                width: double.infinity,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
               service.name,
@@ -336,4 +358,5 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
 }

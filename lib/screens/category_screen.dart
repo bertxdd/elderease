@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/service_image_config.dart';
 import '../models/service_model.dart';
 
 class CategoryScreen extends StatelessWidget {
@@ -67,7 +68,12 @@ class CategoryScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(height: 80, color: Colors.grey[300]),
+                          buildMappedImage(
+                            serviceImagePath(service.name),
+                            height: 80,
+                            width: double.infinity,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                           const SizedBox(height: 8),
                           Text(
                             service.name,

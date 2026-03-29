@@ -20,7 +20,7 @@ final List<ServiceModel> allServices = [
     id: '1',
     name: 'LPG Gas Tank Replacement',
     description: 'Safe replacement of LPG gas tanks at home.',
-    category: 'Heavy Household Chores',
+    category: 'Home Maintenance & Support',
   ),
   ServiceModel(
     id: '2',
@@ -32,19 +32,19 @@ final List<ServiceModel> allServices = [
     id: '3',
     name: 'Garden Maintenance',
     description: 'Trimming, weeding, and general garden care.',
-    category: 'Heavy Household Chores',
+    category: 'Home Maintenance & Support',
   ),
   ServiceModel(
     id: '4',
     name: 'Utility Assistance',
     description: 'Help with utility-related errands and account coordination.',
-    category: 'Errands and Logistics',
+    category: 'Home Maintenance & Support',
   ),
   ServiceModel(
     id: '5',
     name: 'Water Container Refill',
     description: 'Lift and place heavy water containers.',
-    category: 'Heavy Household Chores',
+    category: 'Home Maintenance & Support',
   ),
   ServiceModel(
     id: '6',
