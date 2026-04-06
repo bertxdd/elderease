@@ -33,8 +33,24 @@ try {
         respond(401, ['success' => false, 'message' => 'Invalid admin username or password']);
     }
 
+    $token = bin2hex(random_bytes(32));
+    $tokenHash = hash('sha256', $token);
+    $expiresAt = date('Y-m-d H:i:s', time() + (60 * 60 * 12));
+
+    $sessionStmt = $pdo->prepare(
+        'INSERT INTO admin_sessions (admin_id, token_hash, expires_at)
+         VALUES (:admin_id, :token_hash, :expires_at)'
+    );
+    $sessionStmt->execute([
+        'admin_id' => (int)$admin['admin_id'],
+        'token_hash' => $tokenHash,
+        'expires_at' => $expiresAt,
+    ]);
+
     respond(200, [
         'success' => true,
+        'token' => $token,
+        'expires_at' => $expiresAt,
         'admin' => [
             'admin_id' => (int)$admin['admin_id'],
             'full_name' => (string)$admin['full_name'],

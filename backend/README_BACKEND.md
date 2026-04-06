@@ -14,10 +14,13 @@ This folder contains a ready-to-upload backend matching your Flutter app flow.
 - `api/register.php`: creates user account
 - `api/login.php`: authenticates user account
 - `api/admin_login.php`: authenticates admin account
+- `api/admin_logout.php`: invalidates active admin session token
 - `api/get_profile.php`: fetches profile details by username
 - `api/update_profile.php`: updates profile details by username
 - `api/assign_volunteer.php`: assigns helper to request and sets status to matched
+- `api/admin_assign_volunteer.php`: admin-only volunteer assignment (Bearer token)
 - `api/update_request_status.php`: updates request status (for admin/volunteer tools)
+- `api/admin_update_request_status.php`: admin-only status update (Bearer token)
 - `api/list_services.php`: fetches active services catalog
 - `api/admin_list_requests.php`: lists all requests for admin dashboard
 - `api/list_volunteers.php`: lists all volunteers for admin assignment UI
@@ -27,9 +30,10 @@ This folder contains a ready-to-upload backend matching your Flutter app flow.
 
 1. Create MySQL database in Hostinger hPanel.
 2. Open phpMyAdmin and import `sql/elderease_schema.sql`.
-3. Upload `api/` files to `public_html/api/` in your hosting account.
-4. Edit `public_html/api/config.php` with your actual credentials.
-5. Set `APP_DEBUG` to `false` in production.
+3. If your database already exists, run `sql/migrations/2026_04_06_create_admin_sessions.sql`.
+4. Upload `api/` files to `public_html/api/` in your hosting account.
+5. Edit `public_html/api/config.php` with your actual credentials.
+6. Set `APP_DEBUG` to `false` in production.
 
 ## Flutter Base URL
 
@@ -38,6 +42,10 @@ Your Flutter app should point to:
 `https://elderease.uslsbsit.com/api`
 
 Current Flutter config already uses this in `lib/config/app_config.dart`.
+
+Admin web dashboard entry page:
+
+`https://elderease.uslsbsit.com/admin.html`
 
 ## Quick Endpoint Tests
 
@@ -104,13 +112,66 @@ Current Flutter config already uses this in `lib/config/app_config.dart`.
 }
 ```
 
+Returns a `token` that must be sent in `Authorization: Bearer <token>`.
+
 ### Admin list requests
 
-`GET https://elderease.uslsbsit.com/api/admin_list_requests.php?admin_username=admin1`
+`GET https://elderease.uslsbsit.com/api/admin_list_requests.php`
+
+Header:
+
+`Authorization: Bearer <token>`
 
 ### List volunteers (admin)
 
-`GET https://elderease.uslsbsit.com/api/list_volunteers.php?admin_username=admin1`
+`GET https://elderease.uslsbsit.com/api/list_volunteers.php`
+
+Header:
+
+`Authorization: Bearer <token>`
+
+### Admin assign volunteer
+
+`POST https://elderease.uslsbsit.com/api/admin_assign_volunteer.php`
+
+Header:
+
+`Authorization: Bearer <token>`
+
+Body:
+
+```json
+{
+  "request_id": "1741716486000",
+  "volunteer_id": 1
+}
+```
+
+### Admin update request status
+
+`POST https://elderease.uslsbsit.com/api/admin_update_request_status.php`
+
+Header:
+
+`Authorization: Bearer <token>`
+
+Body:
+
+```json
+{
+  "request_id": "1741716486000",
+  "status": "en_route",
+  "volunteer_id": 1
+}
+```
+
+### Admin logout
+
+`POST https://elderease.uslsbsit.com/api/admin_logout.php`
+
+Header:
+
+`Authorization: Bearer <token>`
 
 ### Get profile
 

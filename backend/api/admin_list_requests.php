@@ -4,17 +4,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/response.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/admin_auth.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     respond(405, ['success' => false, 'message' => 'Method not allowed']);
 }
 
-$adminUsername = trim((string)($_GET['admin_username'] ?? ''));
 $status = strtolower(trim((string)($_GET['status'] ?? 'all')));
-
-if ($adminUsername === '') {
-    respond(422, ['success' => false, 'message' => 'admin_username is required']);
-}
 
 $allowedStatuses = ['all', 'requested', 'matched', 'en_route', 'arrived', 'completed', 'cancelled'];
 if (!in_array($status, $allowedStatuses, true)) {
@@ -23,17 +19,7 @@ if (!in_array($status, $allowedStatuses, true)) {
 
 try {
     $pdo = db();
-
-    $checkAdmin = $pdo->prepare(
-        'SELECT admin_id
-         FROM admins
-         WHERE username = :username
-         LIMIT 1'
-    );
-    $checkAdmin->execute(['username' => $adminUsername]);
-    if (!$checkAdmin->fetch()) {
-        respond(403, ['success' => false, 'message' => 'Admin account not found']);
-    }
+    $admin = require_admin_auth($pdo);
 
     $sql =
         'SELECT
@@ -108,7 +94,14 @@ try {
         ];
     }
 
-    respond(200, ['success' => true, 'data' => $data]);
+    respond(200, [
+        'success' => true,
+        'admin' => [
+            'username' => $admin['username'],
+            'full_name' => $admin['full_name'],
+        ],
+        'data' => $data,
+    ]);
 } catch (Throwable $e) {
     $message = APP_DEBUG ? $e->getMessage() : 'Server error';
     respond(500, ['success' => false, 'message' => $message]);
