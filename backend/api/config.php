@@ -9,4 +9,4 @@ const DB_USER = 'u793073111_elderease';
 const DB_PASS = 'Elderease1';
 
 // Set to false in production.
-const APP_DEBUG = true;
+const APP_DEBUG = false;

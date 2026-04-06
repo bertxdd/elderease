@@ -56,6 +56,71 @@ try {
         }
     }
 
+    if ($role === 'volunteer') {
+        $checkPendingUsername = $pdo->prepare(
+            'SELECT signup_id
+             FROM volunteer_signup_requests
+             WHERE username = :username
+               AND status = :status
+             LIMIT 1'
+        );
+        $checkPendingUsername->execute([
+            'username' => $username,
+            'status' => 'pending',
+        ]);
+        if ($checkPendingUsername->fetch()) {
+            respond(409, ['success' => false, 'message' => 'Volunteer application is already pending for this username']);
+        }
+
+        if ($email !== '') {
+            $checkPendingEmail = $pdo->prepare(
+                'SELECT signup_id
+                 FROM volunteer_signup_requests
+                 WHERE email = :email
+                   AND status = :status
+                 LIMIT 1'
+            );
+            $checkPendingEmail->execute([
+                'email' => $email,
+                'status' => 'pending',
+            ]);
+            if ($checkPendingEmail->fetch()) {
+                respond(409, ['success' => false, 'message' => 'Volunteer application is already pending for this email']);
+            }
+        }
+
+        $insertPending = $pdo->prepare(
+            'INSERT INTO volunteer_signup_requests
+             (full_name, username, email, password_hash, phone_number, birthday, address, status)
+             VALUES (:full_name, :username, :email, :password_hash, :phone_number, :birthday, :address, :status)'
+        );
+        $insertPending->execute([
+            'full_name' => $fullName,
+            'username' => $username,
+            'email' => $email !== '' ? $email : null,
+            'password_hash' => password_hash($password, PASSWORD_BCRYPT),
+            'phone_number' => $phone !== '' ? $phone : null,
+            'birthday' => $birthday !== '' ? $birthday : null,
+            'address' => $address !== '' ? $address : null,
+            'status' => 'pending',
+        ]);
+
+        respond(201, [
+            'success' => true,
+            'message' => 'Volunteer sign up submitted. Please wait for admin approval before logging in.',
+            'signup' => [
+                'signup_id' => (int)$pdo->lastInsertId(),
+                'full_name' => $fullName,
+                'username' => $username,
+                'email' => $email,
+                'phone_number' => $phone,
+                'birthday' => $birthday,
+                'address' => $address,
+                'status' => 'pending',
+            ],
+        ]);
+    }
+
     $insert = $pdo->prepare(
         'INSERT INTO users (full_name, username, role, email, password_hash, phone_number, birthday, address)
          VALUES (:full_name, :username, :role, :email, :password_hash, :phone_number, :birthday, :address)'

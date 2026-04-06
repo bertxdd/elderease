@@ -39,6 +39,9 @@ class AuthApiService {
 
       final decoded = _tryDecode(response.body);
       if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (decoded is Map<String, dynamic> && decoded['message'] is String) {
+          return (true, decoded['message'] as String);
+        }
         return (true, 'Account created successfully.');
       }
 

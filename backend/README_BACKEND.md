@@ -24,6 +24,9 @@ This folder contains a ready-to-upload backend matching your Flutter app flow.
 - `api/list_services.php`: fetches active services catalog
 - `api/admin_list_requests.php`: lists all requests for admin dashboard
 - `api/list_volunteers.php`: lists all volunteers for admin assignment UI
+- `api/admin_list_volunteer_signups.php`: lists volunteer signups awaiting admin review
+- `api/admin_process_volunteer_signup.php`: approve/reject volunteer signups
+- `api/migrate_hash_admin_passwords.php`: one-time plaintext-to-bcrypt admin password migration (debug-only)
 - `api/submit_feedback.php`: inserts feedback and updates volunteer rating
 
 ## Hostinger Setup
@@ -31,9 +34,10 @@ This folder contains a ready-to-upload backend matching your Flutter app flow.
 1. Create MySQL database in Hostinger hPanel.
 2. Open phpMyAdmin and import `sql/elderease_schema.sql`.
 3. If your database already exists, run `sql/migrations/2026_04_06_create_admin_sessions.sql`.
-4. Upload `api/` files to `public_html/api/` in your hosting account.
-5. Edit `public_html/api/config.php` with your actual credentials.
-6. Set `APP_DEBUG` to `false` in production.
+4. If your database already exists, run `sql/migrations/2026_04_06_create_volunteer_signup_requests.sql`.
+5. Upload `api/` files to `public_html/api/` in your hosting account.
+6. Edit `public_html/api/config.php` with your actual credentials.
+7. Set `APP_DEBUG` to `false` in production.
 
 ## Flutter Base URL
 
@@ -88,6 +92,9 @@ Admin web dashboard entry page:
   "address": "Bacolod City"
 }
 ```
+
+Volunteer signups are now placed in a pending queue and are not immediately created in `users`.
+An admin must approve the signup from the admin dashboard before volunteer login works.
 
 ### Login
 
@@ -165,6 +172,32 @@ Body:
 }
 ```
 
+### Admin list volunteer signups
+
+`GET https://elderease.uslsbsit.com/api/admin_list_volunteer_signups.php?status=pending`
+
+Header:
+
+`Authorization: Bearer <token>`
+
+### Admin approve/reject volunteer signup
+
+`POST https://elderease.uslsbsit.com/api/admin_process_volunteer_signup.php`
+
+Header:
+
+`Authorization: Bearer <token>`
+
+Body:
+
+```json
+{
+  "signup_id": 5,
+  "action": "approve",
+  "admin_note": "Verified profile"
+}
+```
+
 ### Admin logout
 
 `POST https://elderease.uslsbsit.com/api/admin_logout.php`
@@ -172,6 +205,26 @@ Body:
 Header:
 
 `Authorization: Bearer <token>`
+
+### One-time: hash old plaintext admin passwords
+
+If legacy admin passwords were stored as plaintext, run this once:
+
+`POST https://elderease.uslsbsit.com/api/migrate_hash_admin_passwords.php`
+
+Body:
+
+```json
+{
+  "confirm": "HASH_ADMIN_PASSWORDS"
+}
+```
+
+Important:
+
+- Works only when `APP_DEBUG = true`
+- Set `APP_DEBUG = false` after migration
+- Delete `api/migrate_hash_admin_passwords.php` after successful run
 
 ### Get profile
 

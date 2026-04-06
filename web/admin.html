@@ -456,6 +456,42 @@
       cursor: pointer;
     }
 
+    .view-hidden {
+      display: none !important;
+    }
+
+    .placeholder-body {
+      padding: 16px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .signup-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .compact-btn {
+      border: 0;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+    }
+
+    .btn-approve {
+      background: #1b8f61;
+    }
+
+    .btn-reject {
+      background: #c04242;
+    }
+
     @media (max-width: 1100px) {
       .kpis {
         grid-template-columns: repeat(2, minmax(180px, 1fr));
@@ -544,11 +580,12 @@
       </div>
 
       <nav class="menu" aria-label="Admin Sections">
-        <button aria-current="page">Operations Dashboard</button>
-        <button>Request Oversight</button>
-        <button>Volunteer Dispatch</button>
-        <button>User Management</button>
-        <button>Feedback & Reports</button>
+        <button data-view="volunteer-signups" aria-current="page">Volunteer Registration</button>
+        <button data-view="operations">Operations Dashboard</button>
+        <button data-view="request-oversight">Request Oversight</button>
+        <button data-view="volunteer-dispatch">Volunteer Dispatch</button>
+        <button data-view="user-management">User Management</button>
+        <button data-view="feedback-reports">Feedback & Reports</button>
       </nav>
 
       <small>
@@ -558,14 +595,14 @@
 
     <main class="main">
       <header class="topbar">
-        <h1>Admin Operations Dashboard</h1>
+        <h1 id="pageTitle">Volunteer Registration Review</h1>
         <div class="topbar-actions">
           <button class="btn btn-light" id="refreshButton" type="button">Refresh Data</button>
           <button class="btn btn-primary" type="button">Export Daily Summary</button>
         </div>
       </header>
 
-      <section class="kpis">
+      <section class="kpis view-section view-hidden" data-view="operations">
         <article class="kpi card">
           <div class="label">Open Requests</div>
           <div class="value" id="kpiOpen">0</div>
@@ -582,13 +619,13 @@
           <div class="meta">Within current local day</div>
         </article>
         <article class="kpi card">
-          <div class="label">Avg Response Time</div>
-          <div class="value" id="kpiResponse">31m</div>
-          <div class="meta">From request to first match</div>
+          <div class="label">Pending Volunteer Signups</div>
+          <div class="value" id="kpiVolunteerPending">0</div>
+          <div class="meta">Need admin approval</div>
         </article>
       </section>
 
-      <section class="grid">
+      <section class="grid view-section view-hidden" data-view="operations">
         <article class="card">
           <div class="panel-head">
             <h2>Service Requests</h2>
@@ -634,6 +671,76 @@
         </article>
       </section>
 
+      <section class="view-section" data-view="volunteer-signups">
+        <article class="card">
+          <div class="panel-head">
+            <h2>Volunteer Signups Pending Approval</h2>
+            <span style="color:#5f7179;font-size:0.84rem;">Approve to create volunteer account</span>
+          </div>
+          <div style="overflow:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Applicant</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Submitted</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="signupRows"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="view-section view-hidden" data-view="request-oversight">
+        <article class="card">
+          <div class="panel-head">
+            <h2>Request Oversight</h2>
+          </div>
+          <div class="placeholder-body">
+            This section is reserved for advanced request analytics and escalations.
+            For now, use Operations Dashboard for live request management.
+          </div>
+        </article>
+      </section>
+
+      <section class="view-section view-hidden" data-view="volunteer-dispatch">
+        <article class="card">
+          <div class="panel-head">
+            <h2>Volunteer Dispatch</h2>
+          </div>
+          <div class="placeholder-body">
+            This section will handle dispatch planning and territory balancing.
+            Current assignment actions are available in Operations Dashboard.
+          </div>
+        </article>
+      </section>
+
+      <section class="view-section view-hidden" data-view="user-management">
+        <article class="card">
+          <div class="panel-head">
+            <h2>User Management</h2>
+          </div>
+          <div class="placeholder-body">
+            This section will contain account moderation and profile controls.
+          </div>
+        </article>
+      </section>
+
+      <section class="view-section view-hidden" data-view="feedback-reports">
+        <article class="card">
+          <div class="panel-head">
+            <h2>Feedback & Reports</h2>
+          </div>
+          <div class="placeholder-body">
+            This section will show quality metrics and report exports for admins.
+          </div>
+        </article>
+      </section>
+
       <div class="footer-note">Last sync: <span id="lastSync">just now</span></div>
       <div id="globalMessage" class="page-message msg-info hidden"></div>
     </main>
@@ -652,6 +759,7 @@
       adminToken: '',
       requests: [],
       volunteers: [],
+      volunteerSignups: [],
     };
 
     const statusNames = {
@@ -671,13 +779,64 @@
     const adminLoginButton = document.getElementById('adminLoginButton');
 
     const requestRows = document.getElementById('requestRows');
+    const menuButtons = Array.from(document.querySelectorAll('.menu button[data-view]'));
+    const pageTitle = document.getElementById('pageTitle');
+    const viewSections = Array.from(document.querySelectorAll('.view-section[data-view]'));
     const searchInput = document.getElementById('searchInput');
     const statusFilter = document.getElementById('statusFilter');
     const summaryChips = document.getElementById('summaryChips');
     const activityFeed = document.getElementById('activityFeed');
+    const signupRows = document.getElementById('signupRows');
     const lastSync = document.getElementById('lastSync');
     const refreshButton = document.getElementById('refreshButton');
     const globalMessage = document.getElementById('globalMessage');
+
+    const viewLabels = {
+      'volunteer-signups': 'Volunteer Registration Review',
+      operations: 'Admin Operations Dashboard',
+      'request-oversight': 'Request Oversight',
+      'volunteer-dispatch': 'Volunteer Dispatch',
+      'user-management': 'User Management',
+      'feedback-reports': 'Feedback & Reports',
+    };
+
+    function getViewFromHash() {
+      const rawHash = window.location.hash.replace('#', '').trim();
+      if (!rawHash) {
+        return 'volunteer-signups';
+      }
+
+      return viewLabels[rawHash] ? rawHash : 'volunteer-signups';
+    }
+
+    function setActiveView(view, options = {}) {
+      const { updateHash = true } = options;
+      const resolvedView = viewLabels[view] ? view : 'volunteer-signups';
+
+      menuButtons.forEach((button) => {
+        const isActive = button.dataset.view === resolvedView;
+        if (isActive) {
+          button.setAttribute('aria-current', 'page');
+        } else {
+          button.removeAttribute('aria-current');
+        }
+      });
+
+      viewSections.forEach((section) => {
+        const isVisible = section.dataset.view === resolvedView;
+        section.classList.toggle('view-hidden', !isVisible);
+      });
+
+      if (pageTitle) {
+        pageTitle.textContent = viewLabels[resolvedView];
+      }
+
+      if (updateHash) {
+        if (window.location.hash !== `#${resolvedView}`) {
+          window.history.replaceState({}, '', `${window.location.pathname}#${resolvedView}`);
+        }
+      }
+    }
 
     function ensureAdminRoute() {
       const path = window.location.pathname.replace(/\/+$/, '') || '/';
@@ -706,10 +865,13 @@
       state.adminToken = '';
       state.requests = [];
       state.volunteers = [];
+      state.volunteerSignups = [];
       localStorage.removeItem(STORAGE_KEY);
       authOverlay.classList.remove('hidden');
       adminPassword.value = '';
       applyFilters();
+      renderSignupRows();
+      setActiveView('volunteer-signups');
     }
 
     function setMessage(target, message, isError = false) {
@@ -814,13 +976,12 @@
       const open = data.filter((r) => r.status === 'requested').length;
       const assigned = data.filter((r) => ['matched', 'en_route', 'arrived'].includes(r.status)).length;
       const completed = data.filter((r) => r.status === 'completed').length;
+      const pendingSignups = state.volunteerSignups.length;
 
       document.getElementById('kpiOpen').textContent = String(open);
       document.getElementById('kpiAssigned').textContent = String(assigned);
       document.getElementById('kpiCompleted').textContent = String(completed);
-
-      const responseTime = 24 + (open * 3);
-      document.getElementById('kpiResponse').textContent = `${responseTime}m`;
+      document.getElementById('kpiVolunteerPending').textContent = String(pendingSignups);
     }
 
     function renderSummary(data) {
@@ -890,6 +1051,39 @@
         .join('');
     }
 
+    function renderSignupRows() {
+      if (!signupRows) {
+        return;
+      }
+
+      if (!state.volunteerSignups.length) {
+        signupRows.innerHTML = `
+          <tr>
+            <td data-label="Notice" colspan="6">No pending volunteer signups.</td>
+          </tr>
+        `;
+        return;
+      }
+
+      signupRows.innerHTML = state.volunteerSignups
+        .map((signup) => `
+          <tr>
+            <td data-label="Applicant">${escapeHtml(signup.full_name)}${signup.address ? `<br><span style="color:#5b6f78;font-size:0.8rem;">${escapeHtml(signup.address)}</span>` : ''}</td>
+            <td data-label="Username">${escapeHtml(signup.username)}</td>
+            <td data-label="Email">${escapeHtml(signup.email || '-')}</td>
+            <td data-label="Phone">${escapeHtml(signup.phone_number || '-')}</td>
+            <td data-label="Submitted">${toDateLabel(signup.created_at)}</td>
+            <td data-label="Actions">
+              <div class="signup-actions">
+                <button type="button" class="compact-btn btn-approve" data-signup-action="approve" data-signup-id="${signup.signup_id}">Approve</button>
+                <button type="button" class="compact-btn btn-reject" data-signup-action="reject" data-signup-id="${signup.signup_id}">Reject</button>
+              </div>
+            </td>
+          </tr>
+        `)
+        .join('');
+    }
+
     function applyFilters() {
       const query = searchInput.value.trim().toLowerCase();
       const status = statusFilter.value;
@@ -923,19 +1117,46 @@
       setMessage(globalMessage, 'Loading latest requests...', false);
 
       try {
-        const [requestsResult, volunteersResult] = await Promise.all([
+        const [requestsResult, volunteersResult, signupsResult] = await Promise.all([
           apiGet('admin_list_requests.php', { admin_username: state.adminUsername }),
           apiGet('list_volunteers.php', { admin_username: state.adminUsername }),
+          apiGet('admin_list_volunteer_signups.php', { status: 'pending' }),
         ]);
 
         state.requests = Array.isArray(requestsResult.data) ? requestsResult.data : [];
         state.volunteers = Array.isArray(volunteersResult.data) ? volunteersResult.data : [];
+        state.volunteerSignups = Array.isArray(signupsResult.data) ? signupsResult.data : [];
 
         applyFilters();
+        renderSignupRows();
         stampSyncTime();
         setMessage(globalMessage, 'Dashboard synchronized.', false);
       } catch (error) {
         setMessage(globalMessage, error.message || 'Failed to load dashboard data.', true);
+      }
+    }
+
+    async function processVolunteerSignup(signupId, action) {
+      if (!signupId || !action) {
+        return;
+      }
+
+      let adminNote = '';
+      if (action === 'reject') {
+        adminNote = window.prompt('Optional note for rejection:', '') || '';
+      }
+
+      try {
+        await apiPost('admin_process_volunteer_signup.php', {
+          signup_id: Number(signupId),
+          action,
+          admin_note: adminNote,
+        });
+        await loadDashboardData();
+        const actionLabel = action === 'approve' ? 'approved' : 'rejected';
+        setMessage(globalMessage, `Volunteer signup ${actionLabel}.`, false);
+      } catch (error) {
+        setMessage(globalMessage, error.message || 'Failed to process volunteer signup.', true);
       }
     }
 
@@ -993,6 +1214,34 @@
       applyRowUpdate(requestId);
     });
 
+    if (signupRows) {
+      signupRows.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        const action = target.dataset.signupAction;
+        const signupId = target.dataset.signupId;
+        if (!action || !signupId) {
+          return;
+        }
+
+        processVolunteerSignup(signupId, action);
+      });
+    }
+
+    menuButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const nextView = button.dataset.view || 'volunteer-signups';
+        setActiveView(nextView);
+      });
+    });
+
+    window.addEventListener('hashchange', () => {
+      setActiveView(getViewFromHash(), { updateHash: false });
+    });
+
     adminLoginForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       setMessage(loginMessage, '', true);
@@ -1017,6 +1266,7 @@
         state.adminToken = data.token || '';
         persistSession();
         authOverlay.classList.add('hidden');
+        setActiveView(getViewFromHash());
         await loadDashboardData();
       } catch (error) {
         setMessage(loginMessage, error.message || 'Admin login failed.', true);
@@ -1051,6 +1301,7 @@
     });
 
     ensureAdminRoute();
+    setActiveView(getViewFromHash());
     stampSyncTime();
     applyFilters();
   </script>
