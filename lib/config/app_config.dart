@@ -1,5 +1,6 @@
 class AppConfig {
   static const String apiBaseUrl = 'https://elderease.uslsbsit.com/api';
+  static const String adminWebUrl = 'https://elderease.uslsbsit.com';
 
   // PHP endpoint names can be changed here when your backend files are finalized.
   static const String registerPath = 'register.php';

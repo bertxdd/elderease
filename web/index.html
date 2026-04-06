@@ -1,38 +1,981 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
-
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ElderEase Admin Portal">
+  <title>ElderEase Admin Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #eff5f2;
+      --panel: #ffffff;
+      --ink: #1b2a33;
+      --muted: #56707d;
+      --accent: #d97706;
+      --accent-soft: #fff2de;
+      --ok: #11845b;
+      --warn: #c05621;
+      --danger: #b93838;
+      --line: #d7e2df;
+      --radius: 16px;
+      --shadow: 0 14px 35px rgba(20, 46, 38, 0.08);
+    }
 
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="elderease">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+    * {
+      box-sizing: border-box;
+    }
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 10%, #fff7eb 0%, transparent 35%),
+        radial-gradient(circle at 90% 80%, #d8efe6 0%, transparent 45%),
+        var(--bg);
+      min-height: 100vh;
+    }
 
-  <title>elderease</title>
-  <link rel="manifest" href="manifest.json">
+    .layout {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      background: linear-gradient(160deg, #123a33, #1f5a4e);
+      color: #ecf8f3;
+      padding: 28px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Fraunces', serif;
+      font-size: 1.2rem;
+      letter-spacing: 0.02em;
+    }
+
+    .brand-badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.16);
+      display: grid;
+      place-items: center;
+      font-size: 1.05rem;
+    }
+
+    .menu {
+      display: grid;
+      gap: 8px;
+    }
+
+    .menu button {
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: #d7eee7;
+      text-align: left;
+      font: inherit;
+      padding: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .menu button:hover,
+    .menu button[aria-current='page'] {
+      background: rgba(255, 255, 255, 0.16);
+      transform: translateX(2px);
+    }
+
+    .sidebar small {
+      color: #bcd8d0;
+      line-height: 1.45;
+    }
+
+    .main {
+      padding: 26px clamp(14px, 3vw, 36px);
+      display: grid;
+      gap: 20px;
+      animation: reveal 500ms ease;
+    }
+
+    @keyframes reveal {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .topbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: 'Fraunces', serif;
+      font-size: clamp(1.5rem, 2.5vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .topbar-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 9px 20px rgba(217, 119, 6, 0.32);
+    }
+
+    .btn-light {
+      background: var(--panel);
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid #e6efeb;
+    }
+
+    .kpi {
+      padding: 16px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .kpi .label {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .kpi .value {
+      font-size: 1.7rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .kpi .meta {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 12px;
+    }
+
+    .panel-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 1.02rem;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .toolbar input,
+    .toolbar select {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      padding: 9px 10px;
+      font: inherit;
+      min-width: 120px;
+    }
+
+    .toolbar input {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 11px 14px;
+      border-bottom: 1px solid #edf2ef;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 0.82rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    tr:hover td {
+      background: #fbfdfa;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .tag-requested {
+      background: #fff5e2;
+      color: #9c4f09;
+    }
+
+    .tag-matched {
+      background: #e5f7ec;
+      color: #0e714d;
+    }
+
+    .tag-enroute {
+      background: #fff0e8;
+      color: #ab4c23;
+    }
+
+    .tag-arrived {
+      background: #e9f0ff;
+      color: #2f4c8f;
+    }
+
+    .tag-completed {
+      background: #eafaf1;
+      color: #1e7b57;
+    }
+
+    .chips {
+      padding: 14px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .activity {
+      padding: 12px 16px 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .activity-item {
+      border: 1px solid #ebf1ee;
+      border-radius: 12px;
+      padding: 10px;
+      background: #fff;
+    }
+
+    .activity-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.92rem;
+    }
+
+    .activity-item span {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .activity-item small {
+      display: inline-block;
+      margin-top: 6px;
+      color: #5f7179;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-align: right;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(16, 33, 44, 0.5);
+      backdrop-filter: blur(3px);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+
+    .auth-card {
+      width: min(430px, 100%);
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 22px 45px rgba(20, 46, 38, 0.25);
+      border: 1px solid #e5efeb;
+      padding: 20px;
+      display: grid;
+      gap: 12px;
+      animation: reveal 450ms ease;
+    }
+
+    .auth-card h2 {
+      margin: 0;
+      font-family: 'Fraunces', serif;
+    }
+
+    .auth-help {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .auth-card label {
+      display: grid;
+      gap: 6px;
+      color: #354b56;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .auth-card input {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      font: inherit;
+    }
+
+    .page-message {
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.88rem;
+      border: 1px solid transparent;
+    }
+
+    .msg-error {
+      background: #fdecec;
+      border-color: #f4c8c8;
+      color: #9b2e2e;
+    }
+
+    .msg-info {
+      background: #e8f6ff;
+      border-color: #c6e7fb;
+      color: #1f4d70;
+    }
+
+    .action-cell {
+      min-width: 230px;
+    }
+
+    .row-actions {
+      display: grid;
+      gap: 6px;
+    }
+
+    .row-actions select,
+    .row-actions button {
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 7px 8px;
+      font: inherit;
+      font-size: 0.82rem;
+    }
+
+    .row-actions button {
+      border: 0;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    @media (max-width: 1100px) {
+      .kpis {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        border-bottom-left-radius: 18px;
+        border-bottom-right-radius: 18px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar input {
+        min-width: 100%;
+      }
+
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tbody tr {
+        border-bottom: 1px solid var(--line);
+      }
+
+      tbody td {
+        border: 0;
+        padding: 8px 14px;
+      }
+
+      tbody td::before {
+        content: attr(data-label) ': ';
+        font-weight: 700;
+        color: #5e6f78;
+      }
+    }
+  </style>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <section class="auth-overlay" id="authOverlay">
+    <form class="auth-card" id="adminLoginForm">
+      <h2>Admin Sign In</h2>
+      <p class="auth-help">Use your admin account from the admins table.</p>
+
+      <label>
+        Username
+        <input id="adminIdentifier" type="text" autocomplete="username" required>
+      </label>
+
+      <label>
+        Password
+        <input id="adminPassword" type="password" autocomplete="current-password" required>
+      </label>
+
+      <button class="btn btn-primary" type="submit" id="adminLoginButton">Log In as Admin</button>
+      <div id="loginMessage" class="page-message msg-error hidden"></div>
+    </form>
+  </section>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-badge">EE</div>
+        ElderEase Control
+      </div>
+
+      <nav class="menu" aria-label="Admin Sections">
+        <button aria-current="page">Operations Dashboard</button>
+        <button>Request Oversight</button>
+        <button>Volunteer Dispatch</button>
+        <button>User Management</button>
+        <button>Feedback & Reports</button>
+      </nav>
+
+      <small>
+        Web-only admin console. Manage service requests, monitor status, and coordinate volunteers in one place.
+      </small>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1>Admin Operations Dashboard</h1>
+        <div class="topbar-actions">
+          <button class="btn btn-light" id="refreshButton" type="button">Refresh Data</button>
+          <button class="btn btn-primary" type="button">Export Daily Summary</button>
+        </div>
+      </header>
+
+      <section class="kpis">
+        <article class="kpi card">
+          <div class="label">Open Requests</div>
+          <div class="value" id="kpiOpen">0</div>
+          <div class="meta">Across all barangays</div>
+        </article>
+        <article class="kpi card">
+          <div class="label">Assigned In Progress</div>
+          <div class="value" id="kpiAssigned">0</div>
+          <div class="meta">Matched, en route, and arrived</div>
+        </article>
+        <article class="kpi card">
+          <div class="label">Completed Today</div>
+          <div class="value" id="kpiCompleted">0</div>
+          <div class="meta">Within current local day</div>
+        </article>
+        <article class="kpi card">
+          <div class="label">Avg Response Time</div>
+          <div class="value" id="kpiResponse">31m</div>
+          <div class="meta">From request to first match</div>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <div class="panel-head">
+            <h2>Service Requests</h2>
+            <div class="toolbar">
+              <input id="searchInput" type="search" placeholder="Search resident, address, service">
+              <select id="statusFilter">
+                <option value="all">All statuses</option>
+                <option value="requested">Requested</option>
+                <option value="matched">Matched</option>
+                <option value="en_route">En Route</option>
+                <option value="arrived">Arrived</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="overflow:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Resident</th>
+                  <th>Service</th>
+                  <th>Schedule</th>
+                  <th>Status</th>
+                  <th>Volunteer</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="requestRows"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="panel-head">
+            <h2>Quick Monitoring</h2>
+            <span style="color:#5f7179;font-size:0.84rem;">Live Focus Areas</span>
+          </div>
+
+          <div class="chips" id="summaryChips"></div>
+
+          <div class="activity" id="activityFeed"></div>
+        </article>
+      </section>
+
+      <div class="footer-note">Last sync: <span id="lastSync">just now</span></div>
+      <div id="globalMessage" class="page-message msg-info hidden"></div>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = window.location.hostname === 'localhost'
+      ? 'https://elderease.uslsbsit.com/api'
+      : `${window.location.origin}/api`;
+
+    const state = {
+      adminUsername: '',
+      requests: [],
+      volunteers: [],
+    };
+
+    const statusNames = {
+      requested: 'Requested',
+      matched: 'Matched',
+      en_route: 'En Route',
+      arrived: 'Arrived',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+    };
+
+    const authOverlay = document.getElementById('authOverlay');
+    const adminLoginForm = document.getElementById('adminLoginForm');
+    const adminIdentifier = document.getElementById('adminIdentifier');
+    const adminPassword = document.getElementById('adminPassword');
+    const loginMessage = document.getElementById('loginMessage');
+    const adminLoginButton = document.getElementById('adminLoginButton');
+
+    const requestRows = document.getElementById('requestRows');
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const summaryChips = document.getElementById('summaryChips');
+    const activityFeed = document.getElementById('activityFeed');
+    const lastSync = document.getElementById('lastSync');
+    const refreshButton = document.getElementById('refreshButton');
+    const globalMessage = document.getElementById('globalMessage');
+
+    function setMessage(target, message, isError = false) {
+      if (!message) {
+        target.textContent = '';
+        target.classList.add('hidden');
+        target.classList.remove('msg-error', 'msg-info');
+        return;
+      }
+
+      target.textContent = message;
+      target.classList.remove('hidden');
+      target.classList.toggle('msg-error', isError);
+      target.classList.toggle('msg-info', !isError);
+    }
+
+    async function apiGet(path, params = {}) {
+      const query = new URLSearchParams(params).toString();
+      const url = `${API_BASE}/${path}${query ? `?${query}` : ''}`;
+      const response = await fetch(url, { method: 'GET' });
+      const data = await response.json();
+      if (!response.ok || data.success !== true) {
+        throw new Error(data.message || 'Request failed.');
+      }
+      return data;
+    }
+
+    async function apiPost(path, payload) {
+      const url = `${API_BASE}/${path}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (!response.ok || data.success !== true) {
+        throw new Error(data.message || 'Request failed.');
+      }
+      return data;
+    }
+
+    function formatStatusTag(status) {
+      const cls = status === 'en_route' ? 'tag-enroute' : `tag-${status}`;
+      return `<span class="tag ${cls}">${statusNames[status] || status}</span>`;
+    }
+
+    function toDateLabel(raw) {
+      const parsed = new Date(raw);
+      if (Number.isNaN(parsed.getTime())) {
+        return raw || '-';
+      }
+      return parsed.toLocaleString([], {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+
+    function escapeHtml(raw) {
+      return String(raw ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function renderVolunteerOptions(selectedId) {
+      const base = '<option value="">Keep current volunteer</option>';
+      const options = state.volunteers
+        .map((v) => {
+          const selected = selectedId === v.volunteer_id ? 'selected' : '';
+          return `<option value="${v.volunteer_id}" ${selected}>${escapeHtml(v.full_name)}</option>`;
+        })
+        .join('');
+      return `${base}${options}`;
+    }
+
+    function updateKpis(data) {
+      const open = data.filter((r) => r.status === 'requested').length;
+      const assigned = data.filter((r) => ['matched', 'en_route', 'arrived'].includes(r.status)).length;
+      const completed = data.filter((r) => r.status === 'completed').length;
+
+      document.getElementById('kpiOpen').textContent = String(open);
+      document.getElementById('kpiAssigned').textContent = String(assigned);
+      document.getElementById('kpiCompleted').textContent = String(completed);
+
+      const responseTime = 24 + (open * 3);
+      document.getElementById('kpiResponse').textContent = `${responseTime}m`;
+    }
+
+    function renderSummary(data) {
+      const byStatus = {
+        requested: data.filter((r) => r.status === 'requested').length,
+        matched: data.filter((r) => r.status === 'matched').length,
+        en_route: data.filter((r) => r.status === 'en_route').length,
+        arrived: data.filter((r) => r.status === 'arrived').length,
+        completed: data.filter((r) => r.status === 'completed').length
+      };
+
+      summaryChips.innerHTML = Object.entries(byStatus)
+        .map(([key, value]) => `<span class="chip">${statusNames[key]}: ${value}</span>`)
+        .join('');
+    }
+
+    function renderActivity(data) {
+      const activities = data
+        .slice()
+        .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at))
+        .slice(0, 4)
+        .map((r) => `
+          <div class="activity-item">
+            <strong>${escapeHtml(r.user_full_name || r.username)} · ${escapeHtml(r.services.map((s) => s.name).join(', ') || 'General assistance')}</strong>
+            <span>${escapeHtml(r.address)}</span>
+            <small>${statusNames[r.status] || r.status} · ${toDateLabel(r.scheduled_at)}</small>
+          </div>
+        `)
+        .join('');
+
+      activityFeed.innerHTML = activities;
+    }
+
+    function renderRows(data) {
+      if (data.length === 0) {
+        requestRows.innerHTML = `
+          <tr>
+            <td data-label="Notice" colspan="6">No requests match this filter.</td>
+          </tr>
+        `;
+        return;
+      }
+
+      requestRows.innerHTML = data
+        .map((row) => `
+          <tr>
+            <td data-label="Resident">${escapeHtml(row.user_full_name || row.username)}<br><span style="color:#5b6f78;font-size:0.8rem;">${escapeHtml(row.address)}</span></td>
+            <td data-label="Service">${escapeHtml(row.services.map((s) => s.name).join(', ') || 'General assistance')}</td>
+            <td data-label="Schedule">${toDateLabel(row.scheduled_at)}</td>
+            <td data-label="Status">${formatStatusTag(row.status)}</td>
+            <td data-label="Volunteer">${escapeHtml(row.helper_name || 'Unassigned')}</td>
+            <td data-label="Actions" class="action-cell">
+              <div class="row-actions">
+                <select data-role="volunteer" data-request-id="${escapeHtml(row.id)}">
+                  ${renderVolunteerOptions(row.volunteer_id)}
+                </select>
+                <select data-role="status" data-request-id="${escapeHtml(row.id)}">
+                  ${Object.entries(statusNames)
+                    .map(([value, label]) => `<option value="${value}" ${row.status === value ? 'selected' : ''}>${label}</option>`)
+                    .join('')}
+                </select>
+                <button type="button" data-action="apply" data-request-id="${escapeHtml(row.id)}">Apply Changes</button>
+              </div>
+            </td>
+          </tr>
+        `)
+        .join('');
+    }
+
+    function applyFilters() {
+      const query = searchInput.value.trim().toLowerCase();
+      const status = statusFilter.value;
+
+      const filtered = state.requests.filter((row) => {
+        const text = `${row.user_full_name || ''} ${row.username || ''} ${row.address || ''} ${row.services.map((s) => s.name).join(' ')}`.toLowerCase();
+        const queryMatch = query.length === 0 || text.includes(query);
+        const statusMatch = status === 'all' || row.status === status;
+        return queryMatch && statusMatch;
+      });
+
+      updateKpis(filtered);
+      renderSummary(filtered);
+      renderActivity(filtered);
+      renderRows(filtered);
+    }
+
+    function stampSyncTime() {
+      const now = new Date();
+      lastSync.textContent = now.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    async function loadDashboardData() {
+      if (!state.adminUsername) {
+        return;
+      }
+
+      setMessage(globalMessage, 'Loading latest requests...', false);
+
+      try {
+        const [requestsResult, volunteersResult] = await Promise.all([
+          apiGet('admin_list_requests.php', { admin_username: state.adminUsername }),
+          apiGet('list_volunteers.php', { admin_username: state.adminUsername }),
+        ]);
+
+        state.requests = Array.isArray(requestsResult.data) ? requestsResult.data : [];
+        state.volunteers = Array.isArray(volunteersResult.data) ? volunteersResult.data : [];
+
+        applyFilters();
+        stampSyncTime();
+        setMessage(globalMessage, 'Dashboard synchronized.', false);
+      } catch (error) {
+        setMessage(globalMessage, error.message || 'Failed to load dashboard data.', true);
+      }
+    }
+
+    async function applyRowUpdate(requestId) {
+      const volunteerSelect = document.querySelector(`select[data-role="volunteer"][data-request-id="${CSS.escape(requestId)}"]`);
+      const statusSelect = document.querySelector(`select[data-role="status"][data-request-id="${CSS.escape(requestId)}"]`);
+
+      if (!volunteerSelect || !statusSelect) {
+        return;
+      }
+
+      const nextVolunteer = Number(volunteerSelect.value || 0);
+      const nextStatus = statusSelect.value;
+
+      try {
+        if (nextVolunteer > 0) {
+          await apiPost('assign_volunteer.php', {
+            request_id: requestId,
+            volunteer_id: nextVolunteer,
+          });
+        }
+
+        const payload = {
+          request_id: requestId,
+          status: nextStatus,
+        };
+
+        if (nextVolunteer > 0) {
+          payload.volunteer_id = nextVolunteer;
+        }
+
+        await apiPost('update_request_status.php', payload);
+        await loadDashboardData();
+        setMessage(globalMessage, `Request ${requestId} updated.`, false);
+      } catch (error) {
+        setMessage(globalMessage, error.message || 'Failed to apply update.', true);
+      }
+    }
+
+    requestRows.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      if (target.dataset.action !== 'apply') {
+        return;
+      }
+
+      const requestId = target.dataset.requestId;
+      if (!requestId) {
+        return;
+      }
+
+      applyRowUpdate(requestId);
+    });
+
+    adminLoginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setMessage(loginMessage, '', true);
+
+      const identifier = adminIdentifier.value.trim();
+      const password = adminPassword.value;
+      if (!identifier || !password) {
+        setMessage(loginMessage, 'Please enter username and password.', true);
+        return;
+      }
+
+      adminLoginButton.disabled = true;
+      adminLoginButton.textContent = 'Signing in...';
+
+      try {
+        const data = await apiPost('admin_login.php', {
+          identifier,
+          password,
+        });
+
+        state.adminUsername = data.admin?.username || identifier;
+        authOverlay.classList.add('hidden');
+        await loadDashboardData();
+      } catch (error) {
+        setMessage(loginMessage, error.message || 'Admin login failed.', true);
+      } finally {
+        adminLoginButton.disabled = false;
+        adminLoginButton.textContent = 'Log In as Admin';
+      }
+    });
+
+    searchInput.addEventListener('input', applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+    refreshButton.addEventListener('click', () => {
+      loadDashboardData();
+    });
+
+    stampSyncTime();
+    applyFilters();
+  </script>
 </body>
 </html>

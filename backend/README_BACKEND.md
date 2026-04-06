@@ -13,11 +13,14 @@ This folder contains a ready-to-upload backend matching your Flutter app flow.
 - `api/list_requests.php`: lists requests and statuses for a username
 - `api/register.php`: creates user account
 - `api/login.php`: authenticates user account
+- `api/admin_login.php`: authenticates admin account
 - `api/get_profile.php`: fetches profile details by username
 - `api/update_profile.php`: updates profile details by username
 - `api/assign_volunteer.php`: assigns helper to request and sets status to matched
 - `api/update_request_status.php`: updates request status (for admin/volunteer tools)
 - `api/list_services.php`: fetches active services catalog
+- `api/admin_list_requests.php`: lists all requests for admin dashboard
+- `api/list_volunteers.php`: lists all volunteers for admin assignment UI
 - `api/submit_feedback.php`: inserts feedback and updates volunteer rating
 
 ## Hostinger Setup
@@ -89,6 +92,25 @@ Current Flutter config already uses this in `lib/config/app_config.dart`.
   "role": "user"
 }
 ```
+
+### Admin login
+
+`POST https://elderease.uslsbsit.com/api/admin_login.php`
+
+```json
+{
+  "identifier": "admin1",
+  "password": "secret123"
+}
+```
+
+### Admin list requests
+
+`GET https://elderease.uslsbsit.com/api/admin_list_requests.php?admin_username=admin1`
+
+### List volunteers (admin)
+
+`GET https://elderease.uslsbsit.com/api/list_volunteers.php?admin_username=admin1`
 
 ### Get profile
 
