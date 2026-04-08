@@ -55,7 +55,7 @@ class AuthApiService {
     }
   }
 
-  Future<(bool, String, String)> login({
+  Future<(bool, String, String, String?)> login({
     required String identifier,
     required String password,
     String role = 'user',
@@ -86,16 +86,17 @@ class AuthApiService {
             }
           }
         }
-        return (true, resolvedUsername, resolvedRole);
+        return (true, resolvedUsername, resolvedRole, null);
       }
 
       if (decoded is Map<String, dynamic> && decoded['message'] is String) {
-        return (false, decoded['message'] as String, '');
+        final code = decoded['code'] as String?;
+        return (false, decoded['message'] as String, '', code);
       }
 
-      return (false, 'Login failed.', '');
+      return (false, 'Login failed.', '', null);
     } catch (_) {
-      return (false, 'Unable to connect to server.', '');
+      return (false, 'Unable to connect to server.', '', null);
     }
   }
 

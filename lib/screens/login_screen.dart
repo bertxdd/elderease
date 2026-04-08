@@ -62,7 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    final (success, accountUsername, confirmedRole) = await _authService.login(
+    final (success, accountUsername, confirmedRole, errorCode) = await _authService
+        .login(
       identifier: identifier,
       password: password,
       role: _selectedRole.toLowerCase(),
@@ -75,6 +76,11 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (!success) {
+      if (errorCode == 'volunteer_registration_pending') {
+        await _showVolunteerPendingDialog();
+        return;
+      }
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(accountUsername)));
@@ -98,6 +104,26 @@ class _LoginScreenState extends State<LoginScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => HomeScreen(username: accountUsername)),
+    );
+  }
+
+  Future<void> _showVolunteerPendingDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Registration Ongoing'),
+          content: const Text(
+            'Your volunteer registration is still under review. Please wait for admin approval before logging in.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
     );
   }
 

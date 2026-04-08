@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/maps_config.dart';
@@ -44,6 +46,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _headerName = '';
   String _headerEmail = '';
   DateTime? _memberSince;
+  LatLng? _pinnedHomePoint;
+  String _pinnedAddressLabel = '';
 
   @override
   void initState() {
@@ -69,6 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final profile = await _service.fetchProfile(widget.username);
       _applyProfile(profile);
+      await _loadSavedPinnedLocation();
     } catch (_) {
       if (!mounted) {
         return;
@@ -84,6 +89,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _loadSavedPinnedLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lat = prefs.getDouble('home_lat');
+    final lng = prefs.getDouble('home_lng');
+    final address = prefs.getString('home_address') ?? '';
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _pinnedHomePoint = (lat != null && lng != null) ? LatLng(lat, lng) : null;
+      _pinnedAddressLabel = address;
+    });
   }
 
   void _applyProfile(UserProfileModel profile) {
@@ -201,8 +222,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
-    // Convert the saved address to coordinates and cache it for volunteer map use.
-    await _geocodeAndStoreHomeLocation(address);
+    // Cache a user-selected pin if available; otherwise geocode text address.
+    if (_pinnedHomePoint != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('home_lat', _pinnedHomePoint!.latitude);
+      await prefs.setDouble('home_lng', _pinnedHomePoint!.longitude);
+      await prefs.setString('home_address', address);
+    } else {
+      await _geocodeAndStoreHomeLocation(address);
+    }
 
     setState(() {
       _headerName = _fullNameController.text.trim();
@@ -212,6 +240,171 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Profile updated successfully.'),
+        backgroundColor: Color(0xFFE8922A),
+      ),
+    );
+  }
+
+  String _composeAddressFromFields() {
+    return [
+      _streetController.text.trim(),
+      _cityController.text.trim(),
+      _zipController.text.trim(),
+    ].where((e) => e.isNotEmpty).join(', ');
+  }
+
+  Future<LatLng?> _geocodeAddressToLatLng(String address) async {
+    final trimmed = address.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+
+    try {
+      final uri = Uri.parse(
+        'https://api.geoapify.com/v1/geocode/search?text=${Uri.encodeQueryComponent(trimmed)}&limit=1&apiKey=$geoapifyApiKey',
+      );
+
+      final response = await http.get(uri);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final features = decoded['features'];
+      if (features is! List || features.isEmpty) {
+        return null;
+      }
+
+      final first = features.first;
+      if (first is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final properties = first['properties'];
+      if (properties is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final lat = (properties['lat'] as num?)?.toDouble();
+      final lng = (properties['lon'] as num?)?.toDouble();
+      if (lat == null || lng == null) {
+        return null;
+      }
+
+      return LatLng(lat, lng);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<({String street, String city, String zip, String fullAddress})?>
+      _reverseGeocode(LatLng point) async {
+    try {
+      final uri = Uri.parse(
+        'https://api.geoapify.com/v1/geocode/reverse?lat=${point.latitude}&lon=${point.longitude}&apiKey=$geoapifyApiKey',
+      );
+
+      final response = await http.get(uri);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final features = decoded['features'];
+      if (features is! List || features.isEmpty) {
+        return null;
+      }
+
+      final first = features.first;
+      if (first is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final properties = first['properties'];
+      if (properties is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final street = [
+        properties['housenumber']?.toString() ?? '',
+        properties['street']?.toString() ?? '',
+      ].where((e) => e.trim().isNotEmpty).join(' ').trim();
+
+      final city = (properties['city'] ?? properties['state'] ?? properties['county'] ?? '')
+          .toString()
+          .trim();
+      final zip = (properties['postcode'] ?? '').toString().trim();
+      final full = (properties['formatted'] ?? '').toString().trim();
+
+      return (
+        street: street,
+        city: city,
+        zip: zip,
+        fullAddress: full,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _pinAddressOnMap() async {
+    final currentAddress = _composeAddressFromFields();
+    final geocoded = await _geocodeAddressToLatLng(currentAddress);
+
+    final initialPoint =
+        _pinnedHomePoint ?? geocoded ?? const LatLng(10.6765, 122.9509);
+
+    if (!mounted) {
+      return;
+    }
+
+    final picked = await Navigator.push<LatLng>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _ProfileMapPinScreen(initialPoint: initialPoint),
+      ),
+    );
+
+    if (!mounted || picked == null) {
+      return;
+    }
+
+    final reverse = await _reverseGeocode(picked);
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _pinnedHomePoint = picked;
+
+      if (reverse != null) {
+        if (reverse.street.isNotEmpty) {
+          _streetController.text = reverse.street;
+        }
+        if (reverse.city.isNotEmpty) {
+          _cityController.text = reverse.city;
+        }
+        if (reverse.zip.isNotEmpty) {
+          _zipController.text = reverse.zip;
+        }
+        _pinnedAddressLabel = reverse.fullAddress;
+      } else {
+        _pinnedAddressLabel =
+            'Pinned at ${picked.latitude.toStringAsFixed(5)}, ${picked.longitude.toStringAsFixed(5)}';
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Location pinned. Save changes to apply it to your profile.'),
         backgroundColor: Color(0xFFE8922A),
       ),
     );
@@ -366,10 +559,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) => HomeScreen(
-                  username: widget.username,
-                  initialServices: widget.services,
-                ),
+                builder: (_) => widget.isVolunteer
+                    ? VolunteerHomeScreen(
+                        username: widget.username,
+                        services: widget.services,
+                        initialTab: 0,
+                      )
+                    : HomeScreen(
+                        username: widget.username,
+                        initialServices: widget.services,
+                      ),
               ),
             );
           },
@@ -502,6 +701,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _pinAddressOnMap,
+                            icon: const Icon(
+                              Icons.location_pin,
+                              color: Color(0xFFE8922A),
+                            ),
+                            label: const Text(
+                              'Pin Your Location on Map',
+                              style: TextStyle(
+                                color: Color(0xFFE8922A),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFE8922A)),
+                            ),
+                          ),
+                        ),
+                        if (_pinnedHomePoint != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            _pinnedAddressLabel.isNotEmpty
+                                ? 'Pinned: $_pinnedAddressLabel'
+                                : 'Pinned coordinates: ${_pinnedHomePoint!.latitude.toStringAsFixed(5)}, ${_pinnedHomePoint!.longitude.toStringAsFixed(5)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -636,6 +868,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 }
               },
             ),
+    );
+  }
+}
+
+class _ProfileMapPinScreen extends StatefulWidget {
+  final LatLng initialPoint;
+
+  const _ProfileMapPinScreen({required this.initialPoint});
+
+  @override
+  State<_ProfileMapPinScreen> createState() => _ProfileMapPinScreenState();
+}
+
+class _ProfileMapPinScreenState extends State<_ProfileMapPinScreen> {
+  late LatLng _selectedPoint;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedPoint = widget.initialPoint;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F0EE),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFE8F0EE),
+        elevation: 0,
+        title: const Text(
+          'Pin Address on Map',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: FlutterMap(
+                  options: MapOptions(
+                    initialCenter: _selectedPoint,
+                    initialZoom: 15,
+                    onTap: (_, point) {
+                      setState(() {
+                        _selectedPoint = point;
+                      });
+                    },
+                  ),
+                  children: [
+                    TileLayer(urlTemplate: geoapifyTileUrlTemplate),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: _selectedPoint,
+                          width: 44,
+                          height: 44,
+                          child: const Icon(
+                            Icons.location_pin,
+                            color: Color(0xFFE8922A),
+                            size: 40,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Tap anywhere on the map to move the pin.',
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(_selectedPoint),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE8922A),
+                ),
+                child: const Text(
+                  'Use This Pinned Location',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

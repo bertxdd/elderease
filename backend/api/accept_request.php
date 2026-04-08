@@ -51,6 +51,28 @@ try {
         $volunteerId = (int)$pdo->lastInsertId();
     }
 
+    $activeCountStmt = $pdo->prepare(
+        'SELECT COUNT(*)
+         FROM service_requests
+         WHERE volunteer_id = :volunteer_id
+           AND status IN (:status_matched, :status_en_route, :status_arrived)'
+    );
+    $activeCountStmt->execute([
+        'volunteer_id' => $volunteerId,
+        'status_matched' => 'matched',
+        'status_en_route' => 'en_route',
+        'status_arrived' => 'arrived',
+    ]);
+
+    $activeCount = (int)($activeCountStmt->fetchColumn() ?: 0);
+    if ($activeCount > 0) {
+        $pdo->rollBack();
+        respond(409, [
+            'success' => false,
+            'message' => 'You already have an active assigned request. Complete it first.',
+        ]);
+    }
+
     $update = $pdo->prepare(
         'UPDATE service_requests
          SET volunteer_id = :volunteer_id,

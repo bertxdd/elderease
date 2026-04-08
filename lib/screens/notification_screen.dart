@@ -27,6 +27,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   final RequestRepository _repository = const RequestRepository();
   late Future<List<ServiceRequestModel>> _requestsFuture;
   Timer? _pollTimer;
+  final Map<RequestStatus, String?> _selectedDateByStatus = {};
 
   @override
   void initState() {
@@ -55,6 +56,145 @@ class _NotificationScreenState extends State<NotificationScreen> {
       _requestsFuture = refreshed;
     });
     await refreshed;
+  }
+
+  String _dateKey(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    final y = local.year.toString().padLeft(4, '0');
+    final m = local.month.toString().padLeft(2, '0');
+    final d = local.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  String _dateLabel(String key) {
+    final parsed = DateTime.tryParse(key);
+    if (parsed == null) {
+      return key;
+    }
+    final local = parsed.toLocal();
+    final month = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ][local.month - 1];
+    return '$month ${local.day}, ${local.year}';
+  }
+
+  Widget _buildCategorySection(
+    BuildContext context,
+    RequestStatus status,
+    List<ServiceRequestModel> requests,
+  ) {
+    final dateKeys = requests
+        .map((r) => _dateKey(r.scheduledAt))
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    final selected = _selectedDateByStatus[status];
+    final effectiveSelected = dateKeys.contains(selected) ? selected : null;
+
+    final filtered = effectiveSelected == null
+        ? requests
+        : requests
+              .where((r) => _dateKey(r.scheduledAt) == effectiveSelected)
+              .toList();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  status.name.toUpperCase(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFE8922A),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.black12),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String?>(
+                    value: effectiveSelected,
+                    hint: const Text('All dates'),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('All dates'),
+                      ),
+                      ...dateKeys.map(
+                        (k) => DropdownMenuItem<String?>(
+                          value: k,
+                          child: Text(_dateLabel(k)),
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedDateByStatus[status] = value;
+                      });
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (filtered.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'No requests for selected date.',
+                style: TextStyle(color: Colors.grey),
+              ),
+            )
+          else
+            ...filtered.map(
+              (request) {
+                final subtitle =
+                    '${request.statusLabel} • ${request.scheduledAt.toLocal().toString().split('.').first}';
+                return _NotificationTile(
+                  request: request,
+                  title: request.services.isEmpty
+                      ? 'Service Request'
+                      : request.services.first.name,
+                  subtitle: subtitle,
+                  address: request.address,
+                  helperName: request.helperName,
+                  volunteerLat: request.volunteerLat,
+                  volunteerLng: request.volunteerLng,
+                  volunteerLocationUpdatedAt: request.volunteerLocationUpdatedAt,
+                  synced: request.synced,
+                  status: request.status,
+                );
+              },
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -93,28 +233,26 @@ class _NotificationScreenState extends State<NotificationScreen> {
             );
           }
 
-          return ListView.builder(
+          final grouped = <RequestStatus, List<ServiceRequestModel>>{};
+          for (final request in requests) {
+            grouped.putIfAbsent(request.status, () => []).add(request);
+          }
+
+          final orderedStatuses = RequestStatus.values
+              .where((s) => grouped.containsKey(s))
+              .toList();
+
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: requests.length,
-            itemBuilder: (context, index) {
-              final request = requests[index];
-              final subtitle =
-                  '${request.statusLabel} • ${request.scheduledAt.toLocal().toString().split('.').first}';
-              return _NotificationTile(
-                request: request,
-                title: request.services.isEmpty
-                    ? 'Service Request'
-                    : request.services.first.name,
-                subtitle: subtitle,
-                address: request.address,
-                helperName: request.helperName,
-                volunteerLat: request.volunteerLat,
-                volunteerLng: request.volunteerLng,
-                volunteerLocationUpdatedAt: request.volunteerLocationUpdatedAt,
-                synced: request.synced,
-                status: request.status,
-              );
-            },
+            children: orderedStatuses
+                .map(
+                  (status) => _buildCategorySection(
+                    context,
+                    status,
+                    grouped[status]!,
+                  ),
+                )
+                .toList(),
           );
         },
       ),

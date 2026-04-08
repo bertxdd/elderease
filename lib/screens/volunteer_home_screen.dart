@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
+import 'package:latlong2/latlong.dart';
 
+import '../config/maps_config.dart';
 import '../models/service_model.dart';
 import '../models/service_request_model.dart';
 import '../services/request_api_service.dart';
 import 'profile_screen.dart';
+import 'volunteer_request_map_screen.dart';
 
 class VolunteerHomeScreen extends StatefulWidget {
   final String username;
@@ -31,6 +35,12 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   List<ServiceRequestModel> _assignedRequests = const [];
   bool _isLoading = true;
   Timer? _pollTimer;
+
+  bool get _hasActiveAssignment => _assignedRequests.any(
+        (r) => r.status == RequestStatus.matched ||
+            r.status == RequestStatus.enRoute ||
+            r.status == RequestStatus.arrived,
+      );
 
   @override
   void initState() {
@@ -126,6 +136,18 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   }
 
   Future<void> _acceptRequest(ServiceRequestModel request) async {
+    if (_hasActiveAssignment) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'You can only handle one assigned request at a time. Complete your current request first.',
+          ),
+          backgroundColor: Color(0xFFE8922A),
+        ),
+      );
+      return;
+    }
+
     final ok = await _api.acceptRequest(
       requestId: request.id,
       username: widget.username,
@@ -221,6 +243,51 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     await _refresh();
   }
 
+  Future<LatLng?> _getVolunteerPoint() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return null;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return null;
+    }
+
+    final position = await Geolocator.getCurrentPosition();
+    return LatLng(position.latitude, position.longitude);
+  }
+
+  Future<void> _openMiniMapPopup() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return SizedBox(
+          height: MediaQuery.of(context).size.height * 0.62,
+          child: _VolunteerMiniMapSheet(
+            onLoadLocation: _getVolunteerPoint,
+          ),
+        );
+      },
+    );
+  }
+
+  void _openAssignedRequestMap(ServiceRequestModel request) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VolunteerRequestMapScreen(request: request),
+      ),
+    );
+  }
+
   String _serviceSummary(ServiceRequestModel request) {
     if (request.services.isEmpty) {
       return 'General assistance';
@@ -234,6 +301,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     required bool assigned,
   }) {
     final canUpdate = assigned && _nextStatus(request.status) != null;
+    final canAccept = !assigned && !_hasActiveAssignment;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -268,12 +336,13 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
               if (!assigned)
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => _acceptRequest(request),
+                    onPressed: canAccept ? () => _acceptRequest(request) : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFE8922A),
+                      disabledBackgroundColor: Colors.grey,
                     ),
-                    child: const Text(
-                      'Accept Request',
+                    child: Text(
+                      canAccept ? 'Accept Request' : 'Finish Current Request',
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
@@ -292,6 +361,27 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     ),
                   ),
                 ),
+              if (assigned) ...[
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: OutlinedButton(
+                    onPressed: () => _openAssignedRequestMap(request),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFE8922A)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: const Icon(
+                      Icons.map_outlined,
+                      color: Color(0xFFE8922A),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ],
@@ -323,12 +413,30 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 
     return RefreshIndicator(
       onRefresh: _refresh,
-      child: ListView.builder(
+      child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        itemCount: data.length,
-        itemBuilder: (context, index) {
-          return _buildRequestCard(request: data[index], assigned: assigned);
-        },
+        children: [
+          if (!assigned && _hasActiveAssignment)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE8922A)),
+              ),
+              child: const Text(
+                'You already have an active assigned request. Complete it before accepting another one.',
+                style: TextStyle(
+                  color: Color(0xFFE8922A),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ...data.map(
+            (request) => _buildRequestCard(request: request, assigned: assigned),
+          ),
+        ],
       ),
     );
   }
@@ -371,6 +479,11 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         ),
         actions: [
           IconButton(
+            onPressed: _openMiniMapPopup,
+            icon: const Icon(Icons.map, color: Colors.black),
+            tooltip: 'Mini Map',
+          ),
+          IconButton(
             onPressed: _refresh,
             icon: const Icon(Icons.refresh, color: Colors.black),
           ),
@@ -396,6 +509,152 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
             label: 'Account',
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _VolunteerMiniMapSheet extends StatefulWidget {
+  final Future<LatLng?> Function() onLoadLocation;
+
+  const _VolunteerMiniMapSheet({
+    required this.onLoadLocation,
+  });
+
+  @override
+  State<_VolunteerMiniMapSheet> createState() => _VolunteerMiniMapSheetState();
+}
+
+class _VolunteerMiniMapSheetState extends State<_VolunteerMiniMapSheet> {
+  LatLng? _location;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocation();
+  }
+
+  Future<void> _loadLocation() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final point = await widget.onLoadLocation();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _location = point;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final center = _location ?? const LatLng(14.5995, 120.9842);
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFE8F0EE),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Volunteer Mini Map',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFE8922A),
+                          ),
+                        )
+                      : _location == null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Unable to load your location. Enable location services and permission, then retry.',
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 12),
+                                ElevatedButton.icon(
+                                  onPressed: _loadLocation,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Retry'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFE8922A),
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : FlutterMap(
+                          options: MapOptions(
+                            initialCenter: center,
+                            initialZoom: 15,
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate: geoapifyTileUrlTemplate,
+                              userAgentPackageName: 'com.example.elderease',
+                            ),
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: _location!,
+                                  width: 44,
+                                  height: 44,
+                                  child: const Icon(
+                                    Icons.my_location,
+                                    color: Color(0xFF1976D2),
+                                    size: 30,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

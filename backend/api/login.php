@@ -37,6 +37,31 @@ try {
         ]);
     $user = $stmt->fetch();
 
+    if (!$user && $role === 'volunteer') {
+        $pendingStmt = $pdo->prepare(
+            'SELECT password_hash
+             FROM volunteer_signup_requests
+             WHERE (username = :identifier_username OR email = :identifier_email)
+               AND status = :status_pending
+             ORDER BY created_at DESC
+             LIMIT 1'
+        );
+        $pendingStmt->execute([
+            'identifier_username' => $identifier,
+            'identifier_email' => $identifier,
+            'status_pending' => 'pending',
+        ]);
+        $pending = $pendingStmt->fetch();
+
+        if ($pending && password_verify($password, (string)$pending['password_hash'])) {
+            respond(403, [
+                'success' => false,
+                'code' => 'volunteer_registration_pending',
+                'message' => 'Your volunteer registration is still pending admin approval.',
+            ]);
+        }
+    }
+
     if (!$user || !password_verify($password, (string)$user['password_hash'])) {
         respond(401, ['success' => false, 'message' => 'Invalid username or password']);
     }
