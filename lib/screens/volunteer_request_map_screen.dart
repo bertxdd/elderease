@@ -13,10 +13,7 @@ import '../models/service_request_model.dart';
 class VolunteerRequestMapScreen extends StatefulWidget {
   final ServiceRequestModel request;
 
-  const VolunteerRequestMapScreen({
-    super.key,
-    required this.request,
-  });
+  const VolunteerRequestMapScreen({super.key, required this.request});
 
   @override
   State<VolunteerRequestMapScreen> createState() =>
@@ -89,7 +86,10 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
       return;
     }
 
-    final routeData = await _loadRoute(origin: volunteer, destination: destination);
+    final routeData = await _loadRoute(
+      origin: volunteer,
+      destination: destination,
+    );
 
     if (!mounted) {
       return;
@@ -106,7 +106,8 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
   }
 
   Future<void> _refreshVolunteerLocationAndRoute() async {
-    final destination = _destination ?? await _geocodeAddress(widget.request.address);
+    final destination =
+        _destination ?? await _geocodeAddress(widget.request.address);
     final volunteer = await _getVolunteerLocation();
 
     if (!mounted) {
@@ -124,7 +125,10 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
       return;
     }
 
-    final routeData = await _loadRoute(origin: volunteer, destination: destination);
+    final routeData = await _loadRoute(
+      origin: volunteer,
+      destination: destination,
+    );
     if (!mounted) {
       return;
     }
@@ -347,7 +351,8 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final center = _volunteerPoint ?? _destination ?? const LatLng(14.5995, 120.9842);
+    final center =
+        _volunteerPoint ?? _destination ?? const LatLng(14.5995, 120.9842);
 
     final markers = <Marker>[
       if (_destination != null)
@@ -355,11 +360,7 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
           point: _destination!,
           width: 40,
           height: 40,
-          child: const Icon(
-            Icons.home,
-            color: Color(0xFFD32F2F),
-            size: 34,
-          ),
+          child: const Icon(Icons.home, color: Color(0xFFD32F2F), size: 34),
         ),
       if (_volunteerPoint != null)
         Marker(
@@ -390,7 +391,10 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
             padding: const EdgeInsets.only(right: 12),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8922A),
                   borderRadius: BorderRadius.circular(20),
@@ -441,7 +445,9 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
                 clipBehavior: Clip.antiAlias,
                 child: _isLoading
                     ? const Center(
-                        child: CircularProgressIndicator(color: Color(0xFFE8922A)),
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFE8922A),
+                        ),
                       )
                     : !isMapReady
                     ? Center(
@@ -494,34 +500,45 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Directions',
-                    style: TextStyle(
-                      color: Color(0xFFE8922A),
-                      fontWeight: FontWeight.bold,
-                    ),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 6),
-                  if (_directionSteps.isEmpty)
-                    const Text('Directions will appear when route data is available.')
-                  else
-                    ..._directionSteps.take(4).toList().asMap().entries.map(
-                          (entry) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Text('${entry.key + 1}. ${entry.value}'),
-                          ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Directions',
+                        style: TextStyle(
+                          color: Color(0xFFE8922A),
+                          fontWeight: FontWeight.bold,
                         ),
-                ],
+                      ),
+                      const SizedBox(height: 6),
+                      if (_directionSteps.isEmpty)
+                        const Text(
+                          'Directions will appear when route data is available.',
+                        )
+                      else
+                        ..._directionSteps
+                            .take(4)
+                            .toList()
+                            .asMap()
+                            .entries
+                            .map(
+                              (entry) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text('${entry.key + 1}. ${entry.value}'),
+                              ),
+                            ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],

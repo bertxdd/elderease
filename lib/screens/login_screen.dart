@@ -62,8 +62,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    final (success, accountUsername, confirmedRole, errorCode) = await _authService
-        .login(
+    final (
+      success,
+      accountUsername,
+      confirmedRole,
+      errorCode,
+    ) = await _authService.login(
       identifier: identifier,
       password: password,
       role: _selectedRole.toLowerCase(),
@@ -146,176 +150,211 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFE8F0EE),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo icon placeholder
-              const Icon(Icons.elderly, size: 80, color: Color(0xFFE8922A)),
-              const SizedBox(height: 16),
-              // App title
-              const Text(
-                'Welcome to\nElderEase',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFE8922A),
-                ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                32,
+                16,
+                32,
+                16 + MediaQuery.of(context).viewInsets.bottom,
               ),
-              const SizedBox(height: 40),
-              // Username or Email Field
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Username or Email',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 32,
                 ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _identifierController,
-                decoration: InputDecoration(
-                  hintText: 'Enter username or email',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Login As',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedRole,
-                    items: const [
-                      DropdownMenuItem(value: 'User', child: Text('User')),
-                      DropdownMenuItem(
-                        value: 'Volunteer',
-                        child: Text('Volunteer'),
-                      ),
-                    ],
-                    onChanged: _isLoading
-                        ? null
-                        : (value) {
-                            if (value == null) {
-                              return;
-                            }
-                            _updateSelectedRole(value);
-                          },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Password Field
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Password',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _passwordController,
-                obscureText: true, // Hides password characters
-                decoration: InputDecoration(
-                  hintText: 'Enter your password',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-              // Login Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE8922A),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Logo icon placeholder
+                    const Icon(
+                      Icons.elderly,
+                      size: 80,
+                      color: Color(0xFFE8922A),
                     ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Log In',
-                          style: TextStyle(fontSize: 18, color: Colors.white),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: OutlinedButton(
-                  onPressed: _isLoading ? null : _openAdminPortal,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFE8922A),
-                    side: const BorderSide(color: Color(0xFFE8922A)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Open Admin Portal (Web)',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-              // Register Link
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Don't have an account? "),
-                  GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                    ),
-                    child: const Text(
-                      'Register Now',
+                    const SizedBox(height: 16),
+                    // App title
+                    const Text(
+                      'Welcome to\nElderEase',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Color(0xFFE8922A),
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
+                        color: Color(0xFFE8922A),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 40),
+                    // Username or Email Field
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Username or Email',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _identifierController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter username or email',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Login As',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedRole,
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'User',
+                              child: Text('User'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Volunteer',
+                              child: Text('Volunteer'),
+                            ),
+                          ],
+                          onChanged: _isLoading
+                              ? null
+                              : (value) {
+                                  if (value == null) {
+                                    return;
+                                  }
+                                  _updateSelectedRole(value);
+                                },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Password Field
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Password',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true, // Hides password characters
+                      decoration: InputDecoration(
+                        hintText: 'Enter your password',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    // Login Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _login,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE8922A),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Log In',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: OutlinedButton(
+                        onPressed: _isLoading ? null : _openAdminPortal,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFE8922A),
+                          side: const BorderSide(color: Color(0xFFE8922A)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Open Admin Portal (Web)',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                    // Register Link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Don't have an account? "),
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const RegisterScreen(),
+                            ),
+                          ),
+                          child: const Text(
+                            'Register Now',
+                            style: TextStyle(
+                              color: Color(0xFFE8922A),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
