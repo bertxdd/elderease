@@ -57,7 +57,7 @@ try {
             s.service_name,
             ri.quantity
          FROM request_items ri
-         INNER JOIN services s ON s.service_id = ri.service_id
+         INNER JOIN services s ON s.service_id = ri.service_id AND s.is_active = 1
          WHERE ri.request_id = :request_id'
     );
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(const ElderEaseApp());
@@ -23,7 +23,7 @@ class ElderEaseApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: const Color(0xFFE8F0EE),
       ),
-      home: const LoginScreen(),
+      home: const SplashScreen(),
     );
   }
 }

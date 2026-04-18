@@ -37,17 +37,18 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   Timer? _pollTimer;
 
   bool get _hasActiveAssignment => _assignedRequests.any(
-        (r) => r.status == RequestStatus.matched ||
-            r.status == RequestStatus.enRoute ||
-            r.status == RequestStatus.arrived,
-      );
+    (r) =>
+        r.status == RequestStatus.matched ||
+        r.status == RequestStatus.enRoute ||
+        r.status == RequestStatus.arrived,
+  );
 
   @override
   void initState() {
     super.initState();
     _currentTab = widget.initialTab;
     _refresh();
-    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _refresh(silent: true);
       _pushVolunteerLocationForAssigned(silent: true);
     });
@@ -94,7 +95,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   Future<void> _pushVolunteerLocationForAssigned({bool silent = false}) async {
     final active = _assignedRequests
         .where(
-          (r) => r.status == RequestStatus.matched ||
+          (r) =>
+              r.status == RequestStatus.matched ||
               r.status == RequestStatus.enRoute ||
               r.status == RequestStatus.arrived,
         )
@@ -119,7 +121,11 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       return;
     }
 
-    final position = await Geolocator.getCurrentPosition();
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+      ),
+    );
 
     for (final request in active) {
       await _api.updateVolunteerLocation(
@@ -188,6 +194,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         return RequestStatus.completed;
       case RequestStatus.requested:
       case RequestStatus.completed:
+      case RequestStatus.cancelled:
         return null;
     }
   }
@@ -202,6 +209,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         return 'Mark Completed';
       case RequestStatus.requested:
       case RequestStatus.completed:
+      case RequestStatus.cancelled:
         return 'Update';
     }
   }
@@ -259,7 +267,11 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       return null;
     }
 
-    final position = await Geolocator.getCurrentPosition();
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+      ),
+    );
     return LatLng(position.latitude, position.longitude);
   }
 
@@ -271,9 +283,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       builder: (_) {
         return SizedBox(
           height: MediaQuery.of(context).size.height * 0.62,
-          child: _VolunteerMiniMapSheet(
-            onLoadLocation: _getVolunteerPoint,
-          ),
+          child: _VolunteerMiniMapSheet(onLoadLocation: _getVolunteerPoint),
         );
       },
     );
@@ -283,7 +293,10 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => VolunteerRequestMapScreen(request: request),
+        builder: (_) => VolunteerRequestMapScreen(
+          username: widget.username,
+          request: request,
+        ),
       ),
     );
   }
@@ -434,7 +447,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
               ),
             ),
           ...data.map(
-            (request) => _buildRequestCard(request: request, assigned: assigned),
+            (request) =>
+                _buildRequestCard(request: request, assigned: assigned),
           ),
         ],
       ),
@@ -496,10 +510,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         selectedItemColor: const Color(0xFFE8922A),
         unselectedItemColor: Colors.grey,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt),
-            label: 'Open',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Open'),
           BottomNavigationBarItem(
             icon: Icon(Icons.assignment_turned_in_outlined),
             label: 'Assigned',
@@ -517,9 +528,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 class _VolunteerMiniMapSheet extends StatefulWidget {
   final Future<LatLng?> Function() onLoadLocation;
 
-  const _VolunteerMiniMapSheet({
-    required this.onLoadLocation,
-  });
+  const _VolunteerMiniMapSheet({required this.onLoadLocation});
 
   @override
   State<_VolunteerMiniMapSheet> createState() => _VolunteerMiniMapSheetState();
@@ -580,10 +589,7 @@ class _VolunteerMiniMapSheetState extends State<_VolunteerMiniMapSheet> {
               const SizedBox(height: 12),
               const Text(
                 'Volunteer Mini Map',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               Expanded(

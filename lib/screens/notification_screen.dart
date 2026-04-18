@@ -94,11 +94,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
     RequestStatus status,
     List<ServiceRequestModel> requests,
   ) {
-    final dateKeys = requests
-        .map((r) => _dateKey(r.scheduledAt))
-        .toSet()
-        .toList()
-      ..sort((a, b) => b.compareTo(a));
+    final dateKeys =
+        requests.map((r) => _dateKey(r.scheduledAt)).toSet().toList()
+          ..sort((a, b) => b.compareTo(a));
 
     final selected = _selectedDateByStatus[status];
     final effectiveSelected = dateKeys.contains(selected) ? selected : null;
@@ -172,26 +170,24 @@ class _NotificationScreenState extends State<NotificationScreen> {
               ),
             )
           else
-            ...filtered.map(
-              (request) {
-                final subtitle =
-                    '${request.statusLabel} • ${request.scheduledAt.toLocal().toString().split('.').first}';
-                return _NotificationTile(
-                  request: request,
-                  title: request.services.isEmpty
-                      ? 'Service Request'
-                      : request.services.first.name,
-                  subtitle: subtitle,
-                  address: request.address,
-                  helperName: request.helperName,
-                  volunteerLat: request.volunteerLat,
-                  volunteerLng: request.volunteerLng,
-                  volunteerLocationUpdatedAt: request.volunteerLocationUpdatedAt,
-                  synced: request.synced,
-                  status: request.status,
-                );
-              },
-            ),
+            ...filtered.map((request) {
+              final subtitle =
+                  '${request.statusLabel} • ${request.scheduledAt.toLocal().toString().split('.').first}';
+              return _NotificationTile(
+                request: request,
+                title: request.services.isEmpty
+                    ? 'Service Request'
+                    : request.services.first.name,
+                subtitle: subtitle,
+                address: request.address,
+                helperName: request.helperName,
+                volunteerLat: request.volunteerLat,
+                volunteerLng: request.volunteerLng,
+                volunteerLocationUpdatedAt: request.volunteerLocationUpdatedAt,
+                synced: request.synced,
+                status: request.status,
+              );
+            }),
         ],
       ),
     );
@@ -246,11 +242,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
             padding: const EdgeInsets.all(16),
             children: orderedStatuses
                 .map(
-                  (status) => _buildCategorySection(
-                    context,
-                    status,
-                    grouped[status]!,
-                  ),
+                  (status) =>
+                      _buildCategorySection(context, status, grouped[status]!),
                 )
                 .toList(),
           );
@@ -333,6 +326,8 @@ class _NotificationTile extends StatelessWidget {
         return Colors.teal;
       case RequestStatus.completed:
         return Colors.green;
+      case RequestStatus.cancelled:
+        return Colors.redAccent;
     }
   }
 
@@ -346,6 +341,18 @@ class _NotificationTile extends StatelessWidget {
       ),
       child: ListTile(
         onTap: () {
+          if (status == RequestStatus.cancelled) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'This request has expired because no volunteer accepted in time.',
+                ),
+                backgroundColor: Color(0xFFE8922A),
+              ),
+            );
+            return;
+          }
+
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -354,10 +361,7 @@ class _NotificationTile extends StatelessWidget {
           );
         },
         leading: Icon(Icons.notifications_none, color: _statusColor()),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(
           synced
               ? [
@@ -372,7 +376,14 @@ class _NotificationTile extends StatelessWidget {
                 ].join('\n')
               : '$subtitle • Waiting for sync',
         ),
-        trailing: const Icon(Icons.map_outlined, color: Color(0xFFE8922A)),
+        trailing: Icon(
+          status == RequestStatus.cancelled
+              ? Icons.info_outline
+              : Icons.map_outlined,
+          color: status == RequestStatus.cancelled
+              ? Colors.redAccent
+              : const Color(0xFFE8922A),
+        ),
       ),
     );
   }

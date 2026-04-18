@@ -10,7 +10,7 @@ class RequestRepository {
   final RequestApiService _apiService;
 
   const RequestRepository({RequestApiService? apiService})
-      : _apiService = apiService ?? const RequestApiService();
+    : _apiService = apiService ?? const RequestApiService();
 
   Future<List<ServiceRequestModel>> getRequestsForUser(String username) async {
     final local = await _loadLocal();
@@ -18,10 +18,11 @@ class RequestRepository {
 
     try {
       final remote = await _apiService.fetchRequests(username);
-      await _mergeAndPersist(localForUser, remote);
-      return _sortByNewest(remote);
+      final activeRemote = _withoutCompleted(remote);
+      await _mergeAndPersist(localForUser, activeRemote);
+      return _sortByNewest(activeRemote);
     } catch (_) {
-      return _sortByNewest(localForUser);
+      return _sortByNewest(_withoutCompleted(localForUser));
     }
   }
 
@@ -64,6 +65,12 @@ class RequestRepository {
 
     final merged = [...others, ...remote, ...unsyncedLocal];
     await _saveLocal(merged);
+  }
+
+  List<ServiceRequestModel> _withoutCompleted(List<ServiceRequestModel> items) {
+    return items
+        .where((item) => item.status != RequestStatus.completed)
+        .toList();
   }
 
   Future<List<ServiceRequestModel>> _loadLocal() async {

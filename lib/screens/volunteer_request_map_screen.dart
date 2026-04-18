@@ -9,11 +9,17 @@ import 'package:latlong2/latlong.dart';
 
 import '../config/maps_config.dart';
 import '../models/service_request_model.dart';
+import '../services/request_api_service.dart';
 
 class VolunteerRequestMapScreen extends StatefulWidget {
+  final String username;
   final ServiceRequestModel request;
 
-  const VolunteerRequestMapScreen({super.key, required this.request});
+  const VolunteerRequestMapScreen({
+    super.key,
+    required this.username,
+    required this.request,
+  });
 
   @override
   State<VolunteerRequestMapScreen> createState() =>
@@ -21,8 +27,10 @@ class VolunteerRequestMapScreen extends StatefulWidget {
 }
 
 class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
-  static const int _refreshIntervalSeconds = 10;
+  static const int _refreshIntervalSeconds = 5;
 
+  final RequestApiService _requestApi = const RequestApiService();
+  StreamSubscription<Position>? _positionStreamSubscription;
   LatLng? _destination;
   LatLng? _volunteerPoint;
   List<LatLng> _routePolyline = [];
@@ -36,6 +44,7 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
   void initState() {
     super.initState();
     _bootstrap();
+    _startLocationTracking();
     _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (!mounted) {
         return;
@@ -59,7 +68,45 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _positionStreamSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _startLocationTracking() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return;
+    }
+
+    _positionStreamSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10, // meters
+      ),
+    ).listen((Position position) {
+      if (!mounted) {
+        return;
+      }
+      final newPosition = LatLng(position.latitude, position.longitude);
+      if (_volunteerPoint?.latitude != newPosition.latitude ||
+          _volunteerPoint?.longitude != newPosition.longitude) {
+        setState(() {
+          _volunteerPoint = newPosition;
+        });
+        _syncVolunteerLocation(newPosition);
+        _refreshVolunteerLocationAndRoute();
+      }
+    });
   }
 
   Future<void> _bootstrap() async {
@@ -69,6 +116,7 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
 
     final destination = await _geocodeAddress(widget.request.address);
     final volunteer = await _getVolunteerLocation();
+    await _syncVolunteerLocation(volunteer);
 
     if (destination == null || volunteer == null) {
       if (!mounted) {
@@ -108,7 +156,8 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
   Future<void> _refreshVolunteerLocationAndRoute() async {
     final destination =
         _destination ?? await _geocodeAddress(widget.request.address);
-    final volunteer = await _getVolunteerLocation();
+    final volunteer = _volunteerPoint ?? await _getVolunteerLocation();
+    await _syncVolunteerLocation(volunteer);
 
     if (!mounted) {
       return;
@@ -158,8 +207,25 @@ class _VolunteerRequestMapScreenState extends State<VolunteerRequestMapScreen> {
       return null;
     }
 
-    final position = await Geolocator.getCurrentPosition();
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+      ),
+    );
     return LatLng(position.latitude, position.longitude);
+  }
+
+  Future<void> _syncVolunteerLocation(LatLng? volunteer) async {
+    if (volunteer == null) {
+      return;
+    }
+
+    await _requestApi.updateVolunteerLocation(
+      requestId: widget.request.id,
+      username: widget.username,
+      lat: volunteer.latitude,
+      lng: volunteer.longitude,
+    );
   }
 
   Future<LatLng?> _geocodeAddress(String address) async {

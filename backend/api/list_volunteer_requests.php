@@ -22,6 +22,21 @@ if (!in_array($scope, ['open', 'assigned'], true)) {
 try {
     $pdo = db();
 
+    $expiryMinutes = max(1, REQUEST_AUTO_EXPIRE_MINUTES);
+    $expireSql = sprintf(
+        'UPDATE service_requests
+         SET status = :status_cancelled
+         WHERE status = :status_requested
+           AND volunteer_id IS NULL
+           AND created_at <= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d MINUTE)',
+        $expiryMinutes
+    );
+    $expireStmt = $pdo->prepare($expireSql);
+    $expireStmt->execute([
+        'status_cancelled' => 'cancelled',
+        'status_requested' => 'requested',
+    ]);
+
     $findName = $pdo->prepare(
         'SELECT full_name
          FROM users
@@ -107,7 +122,7 @@ try {
             s.service_name,
             ri.quantity
          FROM request_items ri
-         INNER JOIN services s ON s.service_id = ri.service_id
+         INNER JOIN services s ON s.service_id = ri.service_id AND s.is_active = 1
          WHERE ri.request_id = :request_id'
     );
 

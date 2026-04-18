@@ -6,6 +6,7 @@ import '../services/auth_api_service.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 import 'volunteer_home_screen.dart';
+import '../widgets/elderease_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -151,10 +152,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Logo icon placeholder
-                    const Icon(
-                      Icons.elderly,
-                      size: 80,
-                      color: Color(0xFFE8922A),
+                    const ElderEaseLogo(
+                      size: 92,
                     ),
                     const SizedBox(height: 16),
                     // App title

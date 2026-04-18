@@ -13,10 +13,7 @@ import '../services/request_api_service.dart';
 class NotificationRequestMapScreen extends StatefulWidget {
   final ServiceRequestModel request;
 
-  const NotificationRequestMapScreen({
-    super.key,
-    required this.request,
-  });
+  const NotificationRequestMapScreen({super.key, required this.request});
 
   @override
   State<NotificationRequestMapScreen> createState() =>
@@ -25,7 +22,7 @@ class NotificationRequestMapScreen extends StatefulWidget {
 
 class _NotificationRequestMapScreenState
     extends State<NotificationRequestMapScreen> {
-  static const int _refreshIntervalSeconds = 10;
+  static const int _refreshIntervalSeconds = 5;
 
   final RequestApiService _requestApi = const RequestApiService();
   late ServiceRequestModel _currentRequest;
@@ -151,7 +148,10 @@ class _NotificationRequestMapScreenState
       }
 
       final destination = LatLng(lat, lng);
-      final route = await _loadRoute(origin: _volunteerPoint, destination: destination);
+      final route = await _loadRoute(
+        origin: _volunteerPoint,
+        destination: destination,
+      );
 
       if (!mounted) {
         return;
@@ -175,7 +175,9 @@ class _NotificationRequestMapScreenState
     }
 
     try {
-      final requests = await _requestApi.fetchRequests(_currentRequest.username);
+      final requests = await _requestApi.fetchRequests(
+        _currentRequest.username,
+      );
       final latest = requests.where((r) => r.id == _currentRequest.id).toList();
       if (latest.isEmpty) {
         return;
@@ -221,7 +223,7 @@ class _NotificationRequestMapScreenState
 
     try {
       final uri = Uri.parse(
-        'https://api.geoapify.com/v1/routing?waypoints=${origin.latitude},${origin.longitude}|${destination.latitude},${destination.longitude}&mode=drive&apiKey=$geoapifyApiKey',
+        'https://api.geoapify.com/v1/routing?waypoints=${origin.latitude},${origin.longitude}|${destination.latitude},${destination.longitude}&mode=drive&details=instruction_details&apiKey=$geoapifyApiKey',
       );
 
       final response = await http.get(uri);
@@ -260,6 +262,23 @@ class _NotificationRequestMapScreenState
           continue;
         }
 
+        if (point[0] is List) {
+          for (final nested in point) {
+            if (nested is! List || nested.length < 2) {
+              continue;
+            }
+
+            final lon = (nested[0] as num?)?.toDouble();
+            final lat = (nested[1] as num?)?.toDouble();
+            if (lat == null || lon == null) {
+              continue;
+            }
+
+            polyline.add(LatLng(lat, lon));
+          }
+          continue;
+        }
+
         final lon = (point[0] as num?)?.toDouble();
         final lat = (point[1] as num?)?.toDouble();
         if (lat == null || lon == null) {
@@ -275,10 +294,24 @@ class _NotificationRequestMapScreenState
     }
   }
 
+  List<LatLng> _connectionPolyline(LatLng? volunteerPoint) {
+    if (volunteerPoint == null || _destination == null) {
+      return const [];
+    }
+
+    if (_routePolyline.isNotEmpty) {
+      return _routePolyline;
+    }
+
+    return [volunteerPoint, _destination!];
+  }
+
   @override
   Widget build(BuildContext context) {
     final volunteerPoint = _volunteerPoint;
-    final center = volunteerPoint ?? _destination ?? const LatLng(14.5995, 120.9842);
+    final center =
+        volunteerPoint ?? _destination ?? const LatLng(14.5995, 120.9842);
+    final connectionPolyline = _connectionPolyline(volunteerPoint);
 
     final markers = <Marker>[
       if (_destination != null)
@@ -286,11 +319,7 @@ class _NotificationRequestMapScreenState
           point: _destination!,
           width: 40,
           height: 40,
-          child: const Icon(
-            Icons.home,
-            color: Color(0xFFE8922A),
-            size: 34,
-          ),
+          child: const Icon(Icons.home, color: Color(0xFFE8922A), size: 34),
         ),
       if (volunteerPoint != null)
         Marker(
@@ -319,7 +348,10 @@ class _NotificationRequestMapScreenState
             padding: const EdgeInsets.only(right: 12),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8922A),
                   borderRadius: BorderRadius.circular(20),
@@ -379,7 +411,9 @@ class _NotificationRequestMapScreenState
                 clipBehavior: Clip.antiAlias,
                 child: _isLoading
                     ? const Center(
-                        child: CircularProgressIndicator(color: Color(0xFFE8922A)),
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFE8922A),
+                        ),
                       )
                     : FlutterMap(
                         options: MapOptions(
@@ -391,11 +425,11 @@ class _NotificationRequestMapScreenState
                             urlTemplate: geoapifyTileUrlTemplate,
                             userAgentPackageName: 'com.example.elderease',
                           ),
-                          if (_routePolyline.isNotEmpty)
+                          if (connectionPolyline.isNotEmpty)
                             PolylineLayer(
                               polylines: [
                                 Polyline(
-                                  points: _routePolyline,
+                                  points: connectionPolyline,
                                   color: const Color(0xFFE8922A),
                                   strokeWidth: 5,
                                 ),

@@ -17,6 +17,21 @@ if ($username === '') {
 try {
     $pdo = db();
 
+    $expiryMinutes = max(1, REQUEST_AUTO_EXPIRE_MINUTES);
+    $expireSql = sprintf(
+        'UPDATE service_requests
+         SET status = :status_cancelled
+         WHERE status = :status_requested
+           AND volunteer_id IS NULL
+           AND created_at <= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d MINUTE)',
+        $expiryMinutes
+    );
+    $expireStmt = $pdo->prepare($expireSql);
+    $expireStmt->execute([
+        'status_cancelled' => 'cancelled',
+        'status_requested' => 'requested',
+    ]);
+
     $stmt = $pdo->prepare(
         'SELECT
             r.request_id,
@@ -35,9 +50,13 @@ try {
          INNER JOIN users u ON u.user_id = r.user_id
          LEFT JOIN volunteers v ON v.volunteer_id = r.volunteer_id
          WHERE u.username = :username
+           AND r.status <> :status_completed
          ORDER BY r.created_at DESC'
     );
-    $stmt->execute(['username' => $username]);
+    $stmt->execute([
+        'username' => $username,
+        'status_completed' => 'completed',
+    ]);
     $rows = $stmt->fetchAll();
 
     $serviceStmt = $pdo->prepare(
@@ -46,7 +65,7 @@ try {
             s.service_name,
             ri.quantity
          FROM request_items ri
-         INNER JOIN services s ON s.service_id = ri.service_id
+         INNER JOIN services s ON s.service_id = ri.service_id AND s.is_active = 1
          WHERE ri.request_id = :request_id'
     );
 

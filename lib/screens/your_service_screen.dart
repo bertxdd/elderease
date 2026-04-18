@@ -81,13 +81,23 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
       return;
     }
 
+    if (status == RequestStatus.cancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This request expired because no volunteer accepted. Please confirm the service again.',
+          ),
+          backgroundColor: Color(0xFFE8922A),
+        ),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => VolunteerScreen(
-          username: widget.username,
-          services: [service],
-        ),
+        builder: (_) =>
+            VolunteerScreen(username: widget.username, services: [service]),
       ),
     );
   }
@@ -162,18 +172,20 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
                       ),
                     )
                   : filteredServices.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No matching services found.',
-                            style: TextStyle(color: Colors.grey, fontSize: 16),
-                          ),
-                        )
+                  ? const Center(
+                      child: Text(
+                        'No matching services found.',
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                      ),
+                    )
                   : ListView.builder(
                       itemCount: filteredServices.length,
                       itemBuilder: (context, index) {
                         final service = filteredServices[index];
                         final status = _latestStatusForService(service);
                         final isCompleted = status == RequestStatus.completed;
+                        final isExpired = status == RequestStatus.cancelled;
+                        final isInactive = isCompleted || isExpired;
                         final statusLabel = status?.name ?? 'not_requested';
 
                         return Container(
@@ -202,12 +214,16 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
                               child: Text(
                                 isCompleted
                                     ? 'Status: Completed (tracking disabled)'
+                                    : isExpired
+                                    ? 'Status: Expired (no volunteer accepted)'
                                     : status == null
-                                        ? 'Status: Not requested yet'
-                                        : 'Status: $statusLabel (tap to track)',
+                                    ? 'Status: Not requested yet'
+                                    : 'Status: $statusLabel (tap to track)',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: isCompleted ? Colors.redAccent : Colors.grey,
+                                  color: isInactive
+                                      ? Colors.redAccent
+                                      : Colors.grey,
                                 ),
                               ),
                             ),
@@ -216,7 +232,9 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
                               children: [
                                 Icon(
                                   Icons.place,
-                                  color: isCompleted ? Colors.grey : const Color(0xFFE8922A),
+                                  color: isInactive
+                                      ? Colors.grey
+                                      : const Color(0xFFE8922A),
                                 ),
                                 IconButton(
                                   icon: const Icon(
@@ -224,7 +242,9 @@ class _YourServiceScreenState extends State<YourServiceScreen> {
                                     color: Colors.grey,
                                   ),
                                   onPressed: () {
-                                    setState(() => widget.services.remove(service));
+                                    setState(
+                                      () => widget.services.remove(service),
+                                    );
                                   },
                                 ),
                               ],

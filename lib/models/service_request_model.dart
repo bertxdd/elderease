@@ -1,21 +1,22 @@
 import 'service_model.dart';
 
-enum RequestStatus { requested, matched, enRoute, arrived, completed }
+enum RequestStatus {
+  requested,
+  matched,
+  enRoute,
+  arrived,
+  completed,
+  cancelled,
+}
 
 class RequestServiceItem {
   final String id;
   final String name;
 
-  const RequestServiceItem({
-    required this.id,
-    required this.name,
-  });
+  const RequestServiceItem({required this.id, required this.name});
 
   factory RequestServiceItem.fromService(ServiceModel service) {
-    return RequestServiceItem(
-      id: service.id,
-      name: service.name,
-    );
+    return RequestServiceItem(id: service.id, name: service.name);
   }
 
   factory RequestServiceItem.fromJson(Map<String, dynamic> json) {
@@ -26,10 +27,7 @@ class RequestServiceItem {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-    };
+    return {'id': id, 'name': name};
   }
 }
 
@@ -76,6 +74,8 @@ class ServiceRequestModel {
         return 'Helper Arrived';
       case RequestStatus.completed:
         return 'Completed';
+      case RequestStatus.cancelled:
+        return 'Expired (No Volunteer Accepted)';
     }
   }
 
@@ -121,13 +121,15 @@ class ServiceRequestModel {
       id: json['id']?.toString() ?? '',
       username: json['username']?.toString() ?? '',
       services: rawServices.map(RequestServiceItem.fromJson).toList(),
-      scheduledAt: DateTime.tryParse(json['scheduled_at']?.toString() ?? '') ??
+      scheduledAt:
+          DateTime.tryParse(json['scheduled_at']?.toString() ?? '') ??
           DateTime.now(),
       address: json['address']?.toString() ?? '',
       notes: json['notes']?.toString() ?? '',
       status: _parseStatus(json['status']?.toString()),
       createdAt:
-          DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
       synced: json['synced'] as bool? ?? true,
       helperName: json['helper_name']?.toString(),
       volunteerLat: (json['volunteer_lat'] as num?)?.toDouble(),
@@ -152,7 +154,8 @@ class ServiceRequestModel {
       'helper_name': helperName,
       'volunteer_lat': volunteerLat,
       'volunteer_lng': volunteerLng,
-      'volunteer_location_updated_at': volunteerLocationUpdatedAt?.toIso8601String(),
+      'volunteer_location_updated_at': volunteerLocationUpdatedAt
+          ?.toIso8601String(),
     };
   }
 
@@ -168,6 +171,9 @@ class ServiceRequestModel {
         return RequestStatus.arrived;
       case 'completed':
         return RequestStatus.completed;
+      case 'cancelled':
+      case 'canceled':
+        return RequestStatus.cancelled;
       case 'requested':
       default:
         return RequestStatus.requested;
