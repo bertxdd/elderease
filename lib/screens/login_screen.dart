@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../config/app_config.dart';
 import '../models/service_model.dart';
 import '../services/auth_api_service.dart';
 import 'home_screen.dart';
@@ -129,20 +127,6 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       },
     );
-  }
-
-  Future<void> _openAdminPortal() async {
-    final uri = Uri.parse(AppConfig.adminWebUrl);
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!mounted) {
-      return;
-    }
-
-    if (!launched) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open admin portal.')),
-      );
-    }
   }
 
   @override
@@ -309,24 +293,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 46,
-                      child: OutlinedButton(
-                        onPressed: _isLoading ? null : _openAdminPortal,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFE8922A),
-                          side: const BorderSide(color: Color(0xFFE8922A)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          'Open Admin Portal (Web)',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 40),
                     // Register Link
                     Row(
