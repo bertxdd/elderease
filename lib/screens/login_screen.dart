@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _authService = const AuthApiService();
   String _selectedRole = 'User';
   bool _isLoading = false;
+  bool _showPassword = false;
 
   @override
   void initState() {
@@ -152,8 +153,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Logo icon placeholder
-                    const ElderEaseLogo(
-                      size: 92,
+                    Container(
+                      width: 132,
+                      height: 132,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x26000000),
+                            blurRadius: 24,
+                            offset: Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: ElderEaseLogo(size: 108),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     // App title
@@ -249,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: _passwordController,
-                      obscureText: true, // Hides password characters
+                      obscureText: !_showPassword,
                       decoration: InputDecoration(
                         hintText: 'Enter your password',
                         filled: true,
@@ -257,6 +274,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showPassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                            color: const Color(0xFFE8922A),
+                          ),
+                          onPressed: () {
+                            setState(() => _showPassword = !_showPassword);
+                          },
                         ),
                       ),
                     ),

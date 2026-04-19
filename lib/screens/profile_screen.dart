@@ -16,6 +16,8 @@ import 'login_screen.dart';
 import 'notification_screen.dart';
 import 'your_service_screen.dart';
 import 'volunteer_home_screen.dart';
+import 'user_service_history_screen.dart';
+import 'volunteer_service_history_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String username;
@@ -236,6 +238,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _headerName = _fullNameController.text.trim();
       _headerEmail = _emailController.text.trim();
     });
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -762,6 +766,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 fontSize: 18,
                               ),
                             ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        if (widget.isVolunteer) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => VolunteerServiceHistoryScreen(
+                                volunteerName: widget.username,
+                              ),
+                            ),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => UserServiceHistoryScreen(
+                                username: widget.username,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.history, color: Color(0xFFE8922A)),
+                      label: const Text(
+                        'Service History',
+                        style: TextStyle(
+                          color: Color(0xFFE8922A),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFE8922A)),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),

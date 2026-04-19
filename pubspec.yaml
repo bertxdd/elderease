@@ -73,6 +73,7 @@ flutter:
 
   assets:
     - logo.png
+    - elder_icon.png
     - lib/screens/errands and logistics.png
     - lib/screens/garden maintenance.png
     - lib/screens/grocery cpllection.png
