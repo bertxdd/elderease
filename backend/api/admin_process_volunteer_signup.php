@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/response.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/admin_auth.php';
+require_once __DIR__ . '/notification_service.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(405, ['success' => false, 'message' => 'Method not allowed']);
@@ -145,11 +146,14 @@ try {
 
     $pdo->commit();
 
+    $notificationResult = notify_volunteer_approved($signup);
+
     respond(200, [
         'success' => true,
         'message' => 'Volunteer signup approved and account created',
         'user_id' => $newUserId,
         'volunteer_id' => $newVolunteerId,
+        'notifications' => $notificationResult,
     ]);
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {

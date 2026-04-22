@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
 const Map<String, String> categoryImageByTitle = {
-  'Heavy Household Chores': 'lib/screens/heavy household chores.png',
-  'Home Maintenance & Support': 'lib/screens/home maintenance.png',
-  'Errands and Logistics': 'lib/screens/errands and logistics.png',
+  'Heavy Household Chores': 'lib/screens/heavy_household_chores.png',
+  'Home Maintenance & Support': 'lib/screens/home_maintenance.png',
+  'Errands and Logistics': 'lib/screens/errands_and_logistics.png',
 };
 
 const Map<String, String> serviceImageByName = {
-  'LPG Gas Tank Replacement': 'lib/screens/lpg gas tank replacement.png',
-  'Grocery Collection': 'lib/screens/grocery cpllection.png',
-  'Garden Maintenance': 'lib/screens/garden maintenance.png',
-  'Utility Assistance': 'lib/screens/utility assistance.png',
-  'Water Container Refill': 'lib/screens/water container refill.png',
-  'Medical Prescription Pickup': 'lib/screens/medical prescription pickup.png',
+  'LPG Gas Tank Replacement': 'lib/screens/lpg_gas_tank_replacement.png',
+  'Grocery Collection': 'lib/screens/grocery_collection.png',
+  'Garden Maintenance': 'lib/screens/garden_maintenance.png',
+  'Utility Assistance': 'lib/screens/utility_assistance.png',
+  'Water Container Refill': 'lib/screens/water_container_refill.png',
+  'Medical Prescription Pickup': 'lib/screens/medical_prescription_pickup.png',
 };
 
 String? categoryImagePath(String categoryTitle) {

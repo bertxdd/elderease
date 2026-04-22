@@ -35,9 +35,10 @@ This folder contains a ready-to-upload backend matching your Flutter app flow.
 2. Open phpMyAdmin and import `sql/elderease_schema.sql`.
 3. If your database already exists, run `sql/migrations/2026_04_06_create_admin_sessions.sql`.
 4. If your database already exists, run `sql/migrations/2026_04_06_create_volunteer_signup_requests.sql`.
-5. Upload `api/` files to `public_html/api/` in your hosting account.
-6. Edit `public_html/api/config.php` with your actual credentials.
-7. Set `APP_DEBUG` to `false` in production.
+5. If your database already exists, run `sql/migrations/2026_04_22_add_volunteer_certification_columns.sql`.
+6. Upload `api/` files to `public_html/api/` in your hosting account.
+7. Edit `public_html/api/config.php` with your actual credentials.
+8. Set `APP_DEBUG` to `false` in production.
 
 ## Flutter Base URL
 
@@ -84,17 +85,19 @@ Admin web dashboard entry page:
 {
   "full_name": "Margrethe V. Gilpo",
   "username": "margrethe",
-  "role": "user",
+  "role": "volunteer",
   "email": "mg@gmail.com",
   "password": "secret123",
   "phone_number": "09086149697",
   "birthday": "1999-05-12",
-  "address": "Bacolod City"
+  "address": "Bacolod City",
+  "certification_image_base64": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD..."
 }
 ```
 
 Volunteer signups are now placed in a pending queue and are not immediately created in `users`.
 An admin must approve the signup from the admin dashboard before volunteer login works.
+Volunteer signups now require `certification_image_base64` when role is `volunteer`.
 
 ### Login
 
@@ -197,6 +200,16 @@ Body:
   "admin_note": "Verified profile"
 }
 ```
+
+When approved, backend attempts to notify the volunteer via EmailJS and PhilSMS.
+Configure these values in `api/config.php`:
+
+- `EMAILJS_SERVICE_ID`
+- `EMAILJS_TEMPLATE_ID`
+- `EMAILJS_PUBLIC_KEY`
+- `EMAILJS_PRIVATE_KEY`
+- `PHILSMS_TOKEN`
+- `PHILSMS_SENDER_ID`
 
 ### Admin logout
 

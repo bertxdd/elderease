@@ -20,6 +20,7 @@ class AuthApiService {
     String role = 'user',
     String birthday = '',
     String address = '',
+    String certificationImageBase64 = '',
   }) async {
     try {
       final response = await http.post(
@@ -34,6 +35,7 @@ class AuthApiService {
           'phone_number': phoneNumber,
           'birthday': birthday,
           'address': address,
+          'certification_image_base64': certificationImageBase64,
         }),
       );
 

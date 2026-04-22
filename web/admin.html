@@ -685,6 +685,7 @@
                   <th>Username</th>
                   <th>Email</th>
                   <th>Phone</th>
+                  <th>Certificate</th>
                   <th>Submitted</th>
                   <th>Actions</th>
                 </tr>
@@ -1059,7 +1060,7 @@
       if (!state.volunteerSignups.length) {
         signupRows.innerHTML = `
           <tr>
-            <td data-label="Notice" colspan="6">No pending volunteer signups.</td>
+            <td data-label="Notice" colspan="7">No pending volunteer signups.</td>
           </tr>
         `;
         return;
@@ -1072,6 +1073,11 @@
             <td data-label="Username">${escapeHtml(signup.username)}</td>
             <td data-label="Email">${escapeHtml(signup.email || '-')}</td>
             <td data-label="Phone">${escapeHtml(signup.phone_number || '-')}</td>
+            <td data-label="Certificate">
+              ${signup.certification_image_url
+                ? `<a href="${escapeHtml(signup.certification_image_url)}" target="_blank" rel="noopener noreferrer">View image</a>${signup.certification_image_name ? `<br><span style="color:#5b6f78;font-size:0.8rem;">${escapeHtml(signup.certification_image_name)}</span>` : ''}`
+                : '<span style="color:#9b2e2e;font-size:0.82rem;">No file</span>'}
+            </td>
             <td data-label="Submitted">${toDateLabel(signup.created_at)}</td>
             <td data-label="Actions">
               <div class="signup-actions">
@@ -1147,13 +1153,24 @@
       }
 
       try {
-        await apiPost('admin_process_volunteer_signup.php', {
+        const result = await apiPost('admin_process_volunteer_signup.php', {
           signup_id: Number(signupId),
           action,
           admin_note: adminNote,
         });
         await loadDashboardData();
         const actionLabel = action === 'approve' ? 'approved' : 'rejected';
+
+        if (action === 'approve' && result.notifications) {
+          const emailText = result.notifications.email_sent ? 'email sent' : 'email not sent';
+          const smsText = result.notifications.sms_sent ? 'sms sent' : 'sms not sent';
+          const errorText = Array.isArray(result.notifications.errors) && result.notifications.errors.length
+            ? ` (${result.notifications.errors.join(' | ')})`
+            : '';
+          setMessage(globalMessage, `Volunteer signup ${actionLabel}. ${emailText}; ${smsText}${errorText}`, false);
+          return;
+        }
+
         setMessage(globalMessage, `Volunteer signup ${actionLabel}.`, false);
       } catch (error) {
         setMessage(globalMessage, error.message || 'Failed to process volunteer signup.', true);

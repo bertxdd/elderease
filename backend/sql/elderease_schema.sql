@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS volunteer_signup_requests (
   phone_number VARCHAR(30) NULL,
   birthday DATE NULL,
   address TEXT NULL,
+  certification_image_url VARCHAR(255) NULL,
+  certification_image_name VARCHAR(190) NULL,
   status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   admin_note TEXT NULL,
   reviewed_at DATETIME NULL,

@@ -43,6 +43,8 @@ dependencies:
   geolocator: ^13.0.1
   # Open admin web portal from the app login screen
   url_launcher: ^6.3.1
+  # Pick volunteer certification image from gallery/files
+  image_picker: ^1.1.2
   # Beautiful icons
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -74,15 +76,7 @@ flutter:
   assets:
     - logo.png
     - elder_icon.png
-    - lib/screens/errands and logistics.png
-    - lib/screens/garden maintenance.png
-    - lib/screens/grocery cpllection.png
-    - lib/screens/heavy household chores.png
-    - lib/screens/home maintenance.png
-    - lib/screens/lpg gas tank replacement.png
-    - lib/screens/medical prescription pickup.png
-    - lib/screens/utility assistance.png
-    - lib/screens/water container refill.png
+    - lib/screens/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
